@@ -1,8 +1,38 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import type { NotraClient } from "../notra-client.js";
 import { listWorkspacesInputSchema, whoAmIInputSchema } from "../schemas/workspace.js";
-import type { WhoAmIResponse } from "../types/workspace.js";
+import type { WorkspaceContextResponse, WhoAmIResponse } from "../types/workspace.js";
 import { handleError } from "../utils/mcp.js";
+
+function projectWorkspaceContext(context: WorkspaceContextResponse): WorkspaceContextResponse {
+  const currentWorkspace = {
+    id: context.currentWorkspace.id,
+    slug: context.currentWorkspace.slug,
+    name: context.currentWorkspace.name,
+    logo: context.currentWorkspace.logo,
+  };
+
+  return {
+    currentWorkspace,
+    workspaces: context.workspaces.map((workspace) => ({
+      id: workspace.id,
+      slug: workspace.slug,
+      name: workspace.name,
+      logo: workspace.logo,
+      role: workspace.role,
+      status: workspace.status,
+      isCurrent: workspace.isCurrent,
+    })),
+    authentication:
+      context.authentication.type === "oauth"
+        ? {
+            type: "oauth",
+            accountId: context.authentication.accountId,
+            scopes: context.authentication.scopes,
+          }
+        : { type: "apiKey" },
+  };
+}
 
 export async function getWhoAmI(client: NotraClient): Promise<WhoAmIResponse> {
   const context = await client.getWorkspaceContext();
@@ -35,7 +65,7 @@ export function registerWorkspaceTools(server: McpServer, client: NotraClient) {
       inputSchema: listWorkspacesInputSchema,
     },
     async () => {
-      return handleError(() => client.getWorkspaceContext(true));
+      return handleError(async () => projectWorkspaceContext(await client.getWorkspaceContext(true)));
     },
   );
 }
