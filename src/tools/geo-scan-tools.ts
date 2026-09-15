@@ -10,7 +10,7 @@ export function registerGeoScanTools(server: McpServer, client: NotraClient) {
     "create_geo_scan",
     {
       description:
-        "Trigger a GEO visibility scan. The scan runs asynchronously and checks every enabled prompt against every configured answer engine; poll get_geo_scan with the returned scanId for completion. This uses AI credits.",
+        "Trigger a GEO visibility scan. The scan runs asynchronously and checks every enabled prompt against every configured answer engine; poll get_geo_scan with the returned scanId for status, progress, mentions, and safe failure details. This uses AI credits.",
       annotations: { title: "Create GEO Scan", destructiveHint: false },
       inputSchema: createGeoScanSchema,
     },
@@ -20,7 +20,8 @@ export function registerGeoScanTools(server: McpServer, client: NotraClient) {
   server.registerTool(
     "list_geo_scans",
     {
-      description: "List a project's GEO scans, newest first, with pagination",
+      description:
+        "List a project's GEO scans, newest first, with pagination, check totals by engine, and safe failure details",
       annotations: { title: "List GEO Scans", readOnlyHint: true },
       inputSchema: listGeoScansSchema,
     },
@@ -30,7 +31,8 @@ export function registerGeoScanTools(server: McpServer, client: NotraClient) {
   server.registerTool(
     "get_geo_scan",
     {
-      description: "Get a single GEO scan and its status (running, completed or failed)",
+      description:
+        "Get a GEO scan's status, planned and completed checks, mentions and explicit failures by engine, plus safe failure details when the scan failed",
       annotations: { title: "Get GEO Scan", readOnlyHint: true },
       inputSchema: getGeoScanSchema,
     },

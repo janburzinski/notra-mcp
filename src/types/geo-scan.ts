@@ -8,6 +8,27 @@ export interface GeoScan {
   startedAt: string;
   finishedAt: string | null;
   createdAt: string;
+  summary: GeoScanSummary;
+  errorCode: string | null;
+  errorMessage: string | null;
+  failedStage: "handoff" | "execution" | "stale" | null;
+  retryable: boolean | null;
+}
+
+export interface GeoScanSummary {
+  plannedChecks: number | null;
+  completedChecks: number;
+  mentionCount: number;
+  failedChecks: number;
+  engines: GeoScanEngineSummary[];
+}
+
+export interface GeoScanEngineSummary {
+  engine: string;
+  plannedChecks: number | null;
+  completedChecks: number;
+  mentionCount: number;
+  failedChecks: number;
 }
 
 export interface CreateGeoScanResponse {
