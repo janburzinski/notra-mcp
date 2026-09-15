@@ -19,6 +19,7 @@ import { registerPostTools } from "./tools/post-tools.js";
 import { registerProjectTools } from "./tools/project-tools.js";
 import { registerScheduleTools } from "./tools/schedule-tools.js";
 import { registerSkillTools } from "./tools/skill-tools.js";
+import { registerWorkspaceTools } from "./tools/workspace-tools.js";
 import type { AuthContext } from "./types/auth.js";
 
 export const SERVER_VERSION = "1.1.0";
@@ -41,6 +42,7 @@ export function createServer(auth: string | AuthContext): McpServer {
   registerChatTools(server, client);
   registerSkillTools(server, client);
   registerProjectTools(server, client);
+  registerWorkspaceTools(server, client);
   registerGeoSettingsTools(server, client);
   registerGeoPromptTools(server, client);
   registerGeoSequenceTools(server, client);

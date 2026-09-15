@@ -111,6 +111,15 @@ When `NODE_ENV=development`, the default AuthKit domain is `essential-berry-67-d
 
 ## Tools
 
+### Workspace
+
+| Tool              | Description                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| `whoami`          | Show the current workspace and authenticated account information            |
+| `list_workspaces` | List accepted and pending workspaces available to the authenticated account |
+
+Each MCP connection operates in the workspace bound to its bearer token. To act in another workspace, authorize a separate connection for that workspace; `list_workspaces` discovers access but does not switch credentials.
+
 ### Posts
 
 | Tool                         | Description                                                                                        |
