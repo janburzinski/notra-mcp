@@ -111,6 +111,12 @@ When `NODE_ENV=development`, the default AuthKit domain is `essential-berry-67-d
 
 ## Tools
 
+### Workspace
+
+| Tool     | Description                                                      |
+| -------- | ---------------------------------------------------------------- |
+| `whoami` | Show the current workspace and authenticated account information |
+
 ### Posts
 
 | Tool                         | Description                                                                                        |

@@ -17,12 +17,31 @@ const SESSION_TTL_MS = 30 * 60 * 1000;
 const SESSION_TOKEN_DIGEST_KEY = randomBytes(32);
 const oauthConfig = getOAuthConfig();
 
+function getAuthContext(authInfo: AuthInfo): AuthContext {
+  if (authInfo.extra?.kind !== "oauth") {
+    return { kind: "apiKey", token: authInfo.token };
+  }
+
+  const { userId, organizationId } = authInfo.extra;
+  if (typeof userId !== "string" || typeof organizationId !== "string") {
+    throw new Error("OAuth MCP request is missing account context");
+  }
+
+  return {
+    kind: "oauth",
+    token: authInfo.token,
+    userId,
+    organizationId,
+    scopes: authInfo.scopes,
+  };
+}
+
 const modernHandler = createMcpHandler(
   ({ authInfo }) => {
     if (!authInfo) {
       throw new Error("Authenticated MCP request is missing auth context");
     }
-    return createServer(authInfo.token);
+    return createServer(getAuthContext(authInfo));
   },
   {
     legacy: "reject",
