@@ -25,7 +25,6 @@ const response = {
     accountId: "user_123",
     scopes: ["posts.read"],
   },
-  pagination: { nextCursor: null },
 };
 
 test("the client fetches workspace context without a resource-specific API call", async () => {
@@ -42,7 +41,7 @@ test("the client fetches workspace context without a resource-specific API call"
 
 test("whoami stays focused on the current workspace", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
-    assert.equal(new URL(url).search, "?limit=1");
+    assert.equal(new URL(url).search, "");
     return Response.json(response);
   });
   const server = createServer("secret");
@@ -59,16 +58,16 @@ test("whoami stays focused on the current workspace", async () => {
   });
 });
 
-test("list_workspaces exposes accepted and pending workspace discovery with pagination", async () => {
+test("list_workspaces exposes accepted and pending workspace discovery", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
-    assert.equal(new URL(url).search, "?limit=25&after=org_previous");
+    assert.equal(new URL(url).search, "?includePending=true");
     return Response.json(response);
   });
   const server = createServer("secret");
   const tool = server._registeredTools.list_workspaces;
 
   assert.equal(tool.annotations.readOnlyHint, true);
-  assert.deepEqual(await tool.handler({ limit: 25, after: "org_previous" }), {
+  assert.deepEqual(await tool.handler({}), {
     content: [{ type: "text", text: JSON.stringify(response, null, 2) }],
     structuredContent: response,
   });

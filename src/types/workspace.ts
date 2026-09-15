@@ -16,18 +16,10 @@ export interface WorkspaceMembership extends Organization {
   isCurrent: boolean;
 }
 
-export interface ListWorkspacesParams {
-  limit?: number;
-  after?: string;
-}
-
 export interface WorkspaceContextResponse {
   currentWorkspace: Organization;
   workspaces: WorkspaceMembership[];
   authentication: AuthenticationIdentity;
-  pagination: {
-    nextCursor: string | null;
-  };
 }
 
 export interface WhoAmIResponse {

@@ -103,7 +103,7 @@ import type {
   UpdateProjectRequest,
 } from "./types/project.js";
 import type { RequestOptions } from "./types/request.js";
-import type { ListWorkspacesParams, WorkspaceContextResponse } from "./types/workspace.js";
+import type { WorkspaceContextResponse } from "./types/workspace.js";
 import { apiErrorSchema } from "./schemas/api.js";
 import { parseChatStream } from "./utils/chat-stream.js";
 import { appendQueryParams } from "./utils/query-params.js";
@@ -403,8 +403,10 @@ export class NotraClient {
     return this.request<ProjectListResponse>("GET", "/v1/projects");
   }
 
-  async getWorkspaceContext(params?: ListWorkspacesParams): Promise<WorkspaceContextResponse> {
-    return this.request<WorkspaceContextResponse>("GET", "/v1/me/workspaces", { params });
+  async getWorkspaceContext(includePending = false): Promise<WorkspaceContextResponse> {
+    return this.request<WorkspaceContextResponse>("GET", "/v1/me/workspaces", {
+      params: includePending ? { includePending: true } : undefined,
+    });
   }
 
   async createProject(body: CreateProjectRequest): Promise<ProjectResponse> {

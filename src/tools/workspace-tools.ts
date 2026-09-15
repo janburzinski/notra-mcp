@@ -5,7 +5,7 @@ import type { WhoAmIResponse } from "../types/workspace.js";
 import { handleError } from "../utils/mcp.js";
 
 export async function getWhoAmI(client: NotraClient): Promise<WhoAmIResponse> {
-  const context = await client.getWorkspaceContext({ limit: 1 });
+  const context = await client.getWorkspaceContext();
   return {
     workspace: context.currentWorkspace,
     authentication: context.authentication,
@@ -34,8 +34,8 @@ export function registerWorkspaceTools(server: McpServer, client: NotraClient) {
       annotations: { title: "List Workspaces", readOnlyHint: true },
       inputSchema: listWorkspacesInputSchema,
     },
-    async (params) => {
-      return handleError(() => client.getWorkspaceContext(params));
+    async () => {
+      return handleError(() => client.getWorkspaceContext(true));
     },
   );
 }
