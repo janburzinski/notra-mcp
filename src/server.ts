@@ -25,8 +25,7 @@ import type { AuthContext } from "./types/auth.js";
 export const SERVER_VERSION = "1.1.0";
 
 export function createServer(auth: string | AuthContext): McpServer {
-  const authContext: AuthContext = typeof auth === "string" ? { kind: "apiKey", token: auth } : auth;
-  const client = new NotraClient(authContext);
+  const client = new NotraClient(auth);
 
   const server = new McpServer(
     {
@@ -43,7 +42,7 @@ export function createServer(auth: string | AuthContext): McpServer {
   registerChatTools(server, client);
   registerSkillTools(server, client);
   registerProjectTools(server, client);
-  registerWorkspaceTools(server, client, authContext);
+  registerWorkspaceTools(server, client);
   registerGeoSettingsTools(server, client);
   registerGeoPromptTools(server, client);
   registerGeoSequenceTools(server, client);

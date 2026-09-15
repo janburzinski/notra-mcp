@@ -1,32 +1,18 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import type { NotraClient } from "../notra-client.js";
-import { whoAmIInputSchema } from "../schemas/workspace.js";
-import type { AuthContext } from "../types/auth.js";
-import type { AuthenticationIdentity, WhoAmIResponse } from "../types/workspace.js";
+import { listWorkspacesInputSchema, whoAmIInputSchema } from "../schemas/workspace.js";
+import type { WhoAmIResponse } from "../types/workspace.js";
 import { handleError } from "../utils/mcp.js";
 
-function getAuthenticationIdentity(auth: AuthContext): AuthenticationIdentity {
-  if (auth.kind === "oauth") {
-    return {
-      type: auth.kind,
-      accountId: auth.userId,
-      scopes: auth.scopes,
-    };
-  }
-
-  return { type: auth.kind };
-}
-
-export async function getWhoAmI(client: NotraClient, auth: AuthContext): Promise<WhoAmIResponse> {
-  const { organization } = await client.listPosts({ limit: 1 });
-
+export async function getWhoAmI(client: NotraClient): Promise<WhoAmIResponse> {
+  const context = await client.getWorkspaceContext({ limit: 1 });
   return {
-    workspace: organization,
-    authentication: getAuthenticationIdentity(auth),
+    workspace: context.currentWorkspace,
+    authentication: context.authentication,
   };
 }
 
-export function registerWorkspaceTools(server: McpServer, client: NotraClient, auth: AuthContext) {
+export function registerWorkspaceTools(server: McpServer, client: NotraClient) {
   server.registerTool(
     "whoami",
     {
@@ -36,7 +22,20 @@ export function registerWorkspaceTools(server: McpServer, client: NotraClient, a
       inputSchema: whoAmIInputSchema,
     },
     async () => {
-      return handleError(() => getWhoAmI(client, auth));
+      return handleError(() => getWhoAmI(client));
+    },
+  );
+
+  server.registerTool(
+    "list_workspaces",
+    {
+      description:
+        "List accepted and pending Notra workspaces available to the authenticated account. Organization API keys only return their current workspace.",
+      annotations: { title: "List Workspaces", readOnlyHint: true },
+      inputSchema: listWorkspacesInputSchema,
+    },
+    async (params) => {
+      return handleError(() => client.getWorkspaceContext(params));
     },
   );
 }
