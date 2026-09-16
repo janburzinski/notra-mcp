@@ -9,6 +9,7 @@ test.each([
   { operation: "chat", phase: "headers", timeout: 180_000 },
   { operation: "chat", phase: "body", timeout: 180_000 },
   { operation: "sequence", phase: "headers", timeout: 300_000 },
+  { operation: "snapshot optional", phase: "headers", timeout: 5_000 },
 ])("$operation cancels a request stalled at $phase", async ({ operation, phase, timeout }) => {
   let received;
   const requestReceived = new Promise((resolve) => {
@@ -58,7 +59,9 @@ test.each([
       ? client.listPosts()
       : operation === "chat"
         ? client.createChat({ message: "Hello" })
-        : client.runGeoSequence("project", "sequence");
+        : operation === "snapshot optional"
+          ? client.getGeoChanges("project", { timeoutMs: timeout })
+          : client.runGeoSequence("project", "sequence");
   const rejected = expect(request).rejects.toThrow(`Notra API request timed out after ${timeout / 1000}s`);
   await requestReceived;
   if (phase === "body") await responseReceived;

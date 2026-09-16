@@ -8,6 +8,7 @@ import { registerFeedbackTools } from "./tools/feedback-tools.js";
 import { registerGeoAgentReadinessTools } from "./tools/geo-agent-readiness-tools.js";
 import { registerGeoBriefTools } from "./tools/geo-brief-tools.js";
 import { registerGeoCompetitorTools } from "./tools/geo-competitor-tools.js";
+import { registerGeoDiagnosticTools } from "./tools/geo-diagnostic-tools.js";
 import { registerGeoPromptTools } from "./tools/geo-prompt-tools.js";
 import { registerGeoScanTools } from "./tools/geo-scan-tools.js";
 import { registerGeoSequenceTools } from "./tools/geo-sequence-tools.js";
@@ -47,6 +48,7 @@ export function createServer(auth: string | AuthContext): McpServer {
   registerGeoPromptTools(server, client);
   registerGeoSequenceTools(server, client);
   registerGeoCompetitorTools(server, client);
+  registerGeoDiagnosticTools(server, client);
   registerGeoScanTools(server, client);
   registerGeoVisibilityTools(server, client);
   registerGeoBriefTools(server, client);

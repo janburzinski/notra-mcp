@@ -48,6 +48,13 @@ import type {
 import type { GeoAgentReadinessResponse, StartGeoAgentReadinessScanResponse } from "./types/geo-agent-readiness.js";
 import type { GeoWindowParams } from "./types/geo-common.js";
 import type {
+  GeoChangesResponse,
+  GeoPromptHistoryResponse,
+  GeoSentimentAnalysisResponse,
+  GeoSentimentEvidenceResponse,
+  GeoSentimentResponse,
+} from "./types/geo-diagnostics.js";
+import type {
   GeoCompetitorListResponse,
   ImportGeoCompetitorsRequest,
   ImportGeoCompetitorsResponse,
@@ -88,6 +95,9 @@ import type {
   GeoTrafficPagesResponse,
 } from "./types/geo-traffic.js";
 import type {
+  GeoPromptResultDetailResponse,
+  GeoPromptResultSummariesResponse,
+  GeoPromptResultSummaryParams,
   GeoVisibilityCompetitorDetailResponse,
   GeoVisibilityCompetitorShareResponse,
   GeoVisibilityLanguageShareResponse,
@@ -95,6 +105,7 @@ import type {
   GeoVisibilityPromptResultsResponse,
   GeoVisibilityTimeseriesResponse,
 } from "./types/geo-visibility.js";
+import type { GeoShelfListResponse } from "./types/geo-shelf.js";
 import type {
   CreateProjectRequest,
   ProjectDeleteResponse,
@@ -102,7 +113,7 @@ import type {
   ProjectResponse,
   UpdateProjectRequest,
 } from "./types/project.js";
-import type { RequestOptions } from "./types/request.js";
+import type { RequestOptions, RequestTimeoutOptions } from "./types/request.js";
 import type { WorkspaceContextResponse } from "./types/workspace.js";
 import { apiErrorSchema } from "./schemas/api.js";
 import { parseChatStream } from "./utils/chat-stream.js";
@@ -586,14 +597,82 @@ export class NotraClient {
     );
   }
 
+  async listGeoPromptResultSummaries(
+    projectId: string,
+    params?: GeoPromptResultSummaryParams,
+  ): Promise<GeoPromptResultSummariesResponse> {
+    return this.request<GeoPromptResultSummariesResponse>(
+      "GET",
+      this.geoPath(projectId, "/visibility/prompt-results/summaries"),
+      { params },
+    );
+  }
+
+  async getGeoPromptResultDetail(projectId: string, checkId: string): Promise<GeoPromptResultDetailResponse> {
+    return this.request<GeoPromptResultDetailResponse>(
+      "GET",
+      this.geoPath(projectId, `/visibility/prompt-results/${encodeURIComponent(checkId)}`),
+    );
+  }
+
+  async getGeoChanges(projectId: string, options?: RequestTimeoutOptions): Promise<GeoChangesResponse> {
+    return this.request<GeoChangesResponse>("GET", this.geoPath(projectId, "/changes"), options);
+  }
+
+  async getGeoPromptHistory(projectId: string, promptId: string, scanId?: string): Promise<GeoPromptHistoryResponse> {
+    return this.request<GeoPromptHistoryResponse>(
+      "GET",
+      this.geoPath(projectId, `/prompts/${encodeURIComponent(promptId)}/history`),
+      { params: { scanId } },
+    );
+  }
+
+  async getGeoSentiment(
+    projectId: string,
+    params?: GeoWindowParams,
+    options?: RequestTimeoutOptions,
+  ): Promise<GeoSentimentResponse> {
+    return this.request<GeoSentimentResponse>("GET", this.geoPath(projectId, "/sentiment"), {
+      params,
+      ...options,
+    });
+  }
+
+  async getGeoSentimentAnalysis(projectId: string, params?: GeoWindowParams): Promise<GeoSentimentAnalysisResponse> {
+    return this.request<GeoSentimentAnalysisResponse>("GET", this.geoPath(projectId, "/sentiment/analysis"), {
+      params,
+    });
+  }
+
+  async listGeoSentimentEvidence(
+    projectId: string,
+    params?: GeoWindowParams & { cursor?: string },
+  ): Promise<GeoSentimentEvidenceResponse> {
+    return this.request<GeoSentimentEvidenceResponse>("GET", this.geoPath(projectId, "/sentiment/evidence"), {
+      params,
+    });
+  }
+
+  async listGeoShelfSources(
+    projectId: string,
+    params?: { offset?: number; limit?: number },
+    options?: RequestTimeoutOptions,
+  ): Promise<GeoShelfListResponse> {
+    return this.request<GeoShelfListResponse>("GET", this.geoPath(projectId, "/shelf-sources"), {
+      params,
+      ...options,
+    });
+  }
+
   async getGeoVisibilityCompetitorShare(
     projectId: string,
     params?: GeoWindowParams,
+    options?: RequestTimeoutOptions,
   ): Promise<GeoVisibilityCompetitorShareResponse> {
     return this.request<GeoVisibilityCompetitorShareResponse>(
       "GET",
       this.geoPath(projectId, "/visibility/competitor-share"),
-      { params },
+      { params, ...options },
     );
   }
 
@@ -620,8 +699,8 @@ export class NotraClient {
     );
   }
 
-  async listGeoContentGaps(projectId: string): Promise<GeoContentGapsResponse> {
-    return this.request<GeoContentGapsResponse>("GET", this.geoPath(projectId, "/gaps"));
+  async listGeoContentGaps(projectId: string, options?: RequestTimeoutOptions): Promise<GeoContentGapsResponse> {
+    return this.request<GeoContentGapsResponse>("GET", this.geoPath(projectId, "/gaps"), options);
   }
 
   async listGeoContentBriefs(projectId: string): Promise<GeoContentBriefListResponse> {
@@ -650,17 +729,22 @@ export class NotraClient {
     );
   }
 
-  async getGeoAgentReadiness(projectId: string): Promise<GeoAgentReadinessResponse> {
-    return this.request<GeoAgentReadinessResponse>("GET", this.geoPath(projectId, "/agent-readiness"));
+  async getGeoAgentReadiness(projectId: string, options?: RequestTimeoutOptions): Promise<GeoAgentReadinessResponse> {
+    return this.request<GeoAgentReadinessResponse>("GET", this.geoPath(projectId, "/agent-readiness"), options);
   }
 
   async startGeoAgentReadinessScan(projectId: string): Promise<StartGeoAgentReadinessScanResponse> {
     return this.request<StartGeoAgentReadinessScanResponse>("POST", this.geoPath(projectId, "/agent-readiness/scan"));
   }
 
-  async getGeoTrafficOverview(projectId: string, params?: GeoWindowParams): Promise<GeoTrafficOverviewResponse> {
+  async getGeoTrafficOverview(
+    projectId: string,
+    params?: GeoWindowParams,
+    options?: RequestTimeoutOptions,
+  ): Promise<GeoTrafficOverviewResponse> {
     return this.request<GeoTrafficOverviewResponse>("GET", this.geoPath(projectId, "/traffic/overview"), {
       params,
+      ...options,
     });
   }
 

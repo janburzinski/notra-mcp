@@ -225,17 +225,26 @@ GEO features are scoped to a project. Most GEO tools take a `projectId`; call `l
 
 ### GEO scans and visibility
 
-| Tool                            | Description                                                 |
-| ------------------------------- | ----------------------------------------------------------- |
-| `create_geo_scan`               | Trigger an async visibility scan (uses AI credits)          |
-| `list_geo_scans`                | List scans with pagination                                  |
-| `get_geo_scan`                  | Get a scan and its status                                   |
-| `get_geo_visibility_overview`   | Mention rates per answer engine                             |
-| `get_geo_visibility_timeseries` | Daily mention counts per engine                             |
-| `get_geo_prompt_results`        | Latest stored answer per prompt and engine, with sources    |
-| `get_geo_competitor_share`      | Share of voice across tracked brands                        |
-| `get_geo_language_share`        | Mention rates per tracked language                          |
-| `get_geo_competitor_detail`     | One competitor's mention history and the prompts driving it |
+| Tool                               | Description                                                 |
+| ---------------------------------- | ----------------------------------------------------------- |
+| `create_geo_scan`                  | Trigger an async visibility scan (uses AI credits)          |
+| `list_geo_scans`                   | List scans with pagination                                  |
+| `get_geo_scan`                     | Get a scan and its status                                   |
+| `get_geo_snapshot`                 | Compact cross-signal diagnosis and recommended next actions |
+| `get_geo_changes`                  | Changes between the two latest scans                        |
+| `get_geo_visibility_overview`      | Mention rates per answer engine                             |
+| `get_geo_visibility_timeseries`    | Daily mention counts per engine                             |
+| `list_geo_prompt_result_summaries` | Filtered, paginated results without full answers or URLs    |
+| `get_geo_prompt_result_detail`     | Full answer and sources for one check                       |
+| `get_geo_prompt_history`           | Compact historical checks for one prompt                    |
+| `get_geo_prompt_results`           | All latest answers; prefer summaries for large projects     |
+| `get_geo_sentiment`                | Sentiment metrics and previous-period comparison            |
+| `get_geo_sentiment_analysis`       | Stored thematic sentiment analysis                          |
+| `list_geo_sentiment_evidence`      | Paginated answers behind sentiment metrics                  |
+| `list_geo_shelf_sources`           | Paginated citation shelf and opportunity state              |
+| `get_geo_competitor_share`         | Share of voice across tracked brands                        |
+| `get_geo_language_share`           | Mention rates per tracked language                          |
+| `get_geo_competitor_detail`        | One competitor's mention history and the prompts driving it |
 
 ### GEO content briefs
 
