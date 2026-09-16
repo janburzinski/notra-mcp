@@ -126,6 +126,7 @@ Each MCP connection operates in the workspace bound to its bearer token. To act 
 | ---------------------------- | -------------------------------------------------------------------------------------------------- |
 | `list_posts`                 | List posts with optional filters for sorting, pagination, status, content type, and brand identity |
 | `get_post`                   | Get a single post by ID                                                                            |
+| `create_post`                | Create a post from your own title and markdown                                                     |
 | `update_post`                | Update a post's title, markdown, or status                                                         |
 | `delete_post`                | Delete a post                                                                                      |
 | `generate_post`              | Queue async post generation from GitHub activity                                                   |
@@ -159,6 +160,16 @@ Each MCP connection operates in the workspace bound to its bearer token. To act 
 | `update_schedule` | Update a scheduled content generation job |
 | `delete_schedule` | Delete a scheduled content generation job |
 
+### Event Triggers
+
+| Tool                   | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------ |
+| `list_event_triggers`  | List triggers that generate content from GitHub releases or pushes |
+| `get_event_trigger`    | Get a single event trigger by ID                                   |
+| `create_event_trigger` | Create an event trigger                                            |
+| `update_event_trigger` | Replace an event trigger's configuration                           |
+| `delete_event_trigger` | Delete an event trigger                                            |
+
 ### Chats
 
 | Tool                           | Description                                                      |
@@ -168,6 +179,7 @@ Each MCP connection operates in the workspace bound to its bearer token. To act 
 | `get_chat_by_external_channel` | Get a chat by Discord or Slack channel ID                        |
 | `create_chat`                  | Start a new chat and return the streamed reply                   |
 | `post_chat_message`            | Post a message to an existing chat and return the streamed reply |
+| `list_agent_chats`             | List durable agent sessions and their status                     |
 
 ### Skills
 
@@ -281,6 +293,9 @@ GEO features are scoped to a project. Most GEO tools take a `projectId`; call `l
 | Tool              | Description                                                                         |
 | ----------------- | ----------------------------------------------------------------------------------- |
 | `submit_feedback` | Send a bug report, feature request, question or praise to the Notra inbox (no auth) |
+| `list_feedback`   | List feedback the organization received, by status, kind or project                 |
+| `get_feedback`    | Get one feedback entry with agent metadata                                          |
+| `update_feedback` | Set a feedback entry's triage status                                                |
 
 ## Development
 

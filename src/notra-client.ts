@@ -5,6 +5,7 @@ import type {
   BrandIdentityListResponse,
   BrandIdentityResponse,
   ChatStreamResponse,
+  CreatePostRequest,
   CreateGithubIntegrationRequest,
   CreateGithubIntegrationResponse,
   CreateSkillRequest,
@@ -36,7 +37,21 @@ import type {
   UpdatePostRequest,
   UpdateSkillRequest,
 } from "./types/api.js";
+import type { AgentChatsListResponse, ListAgentChatsParams } from "./types/agent.js";
 import type { AuthContext } from "./types/auth.js";
+import type {
+  EventTriggerDeleteResponse,
+  EventTriggerListResponse,
+  EventTriggerRequest,
+  EventTriggerResponse,
+  ListEventTriggersParams,
+} from "./types/event-trigger.js";
+import type {
+  FeedbackListResponse,
+  FeedbackResponse,
+  ListFeedbackParams,
+  UpdateFeedbackRequest,
+} from "./types/feedback.js";
 import type {
   ApproveGeoContentBriefResponse,
   GeoContentBriefListResponse,
@@ -270,6 +285,10 @@ export class NotraClient {
     return this.request<PostDeleteResponse>("DELETE", `/v1/posts/${encodeURIComponent(postId)}`);
   }
 
+  async createPost(body: CreatePostRequest): Promise<PostResponse> {
+    return this.request<PostResponse, CreatePostRequest>("POST", "/v1/posts", { body });
+  }
+
   async generatePost(body: GeneratePostRequest): Promise<GeneratePostResponse> {
     return this.request<GeneratePostResponse, GeneratePostRequest>("POST", "/v1/posts/generate", { body });
   }
@@ -404,6 +423,50 @@ export class NotraClient {
 
   async deleteSkill(name: string): Promise<DeleteSkillResponse> {
     return this.request<DeleteSkillResponse>("DELETE", `/v1/skills/${encodeURIComponent(name)}`);
+  }
+
+  async listEventTriggers(params?: ListEventTriggersParams): Promise<EventTriggerListResponse> {
+    return this.request<EventTriggerListResponse>("GET", "/v1/event-triggers", { params });
+  }
+
+  async createEventTrigger(body: EventTriggerRequest): Promise<EventTriggerResponse> {
+    return this.request<EventTriggerResponse, EventTriggerRequest>("POST", "/v1/event-triggers", { body });
+  }
+
+  async getEventTrigger(triggerId: string): Promise<EventTriggerResponse> {
+    return this.request<EventTriggerResponse>("GET", `/v1/event-triggers/${encodeURIComponent(triggerId)}`);
+  }
+
+  async updateEventTrigger(triggerId: string, body: EventTriggerRequest): Promise<EventTriggerResponse> {
+    return this.request<EventTriggerResponse, EventTriggerRequest>(
+      "PATCH",
+      `/v1/event-triggers/${encodeURIComponent(triggerId)}`,
+      { body },
+    );
+  }
+
+  async deleteEventTrigger(triggerId: string): Promise<EventTriggerDeleteResponse> {
+    return this.request<EventTriggerDeleteResponse>("DELETE", `/v1/event-triggers/${encodeURIComponent(triggerId)}`);
+  }
+
+  async listFeedback(params?: ListFeedbackParams): Promise<FeedbackListResponse> {
+    return this.request<FeedbackListResponse>("GET", "/v1/feedback", { params });
+  }
+
+  async getFeedback(feedbackId: string): Promise<FeedbackResponse> {
+    return this.request<FeedbackResponse>("GET", `/v1/feedback/${encodeURIComponent(feedbackId)}`);
+  }
+
+  async updateFeedback(feedbackId: string, body: UpdateFeedbackRequest): Promise<FeedbackResponse> {
+    return this.request<FeedbackResponse, UpdateFeedbackRequest>(
+      "PATCH",
+      `/v1/feedback/${encodeURIComponent(feedbackId)}`,
+      { body },
+    );
+  }
+
+  async listAgentChats(params?: ListAgentChatsParams): Promise<AgentChatsListResponse> {
+    return this.request<AgentChatsListResponse>("GET", "/v2/agent-chats", { params });
   }
 
   private geoPath(projectId: string, suffix: string): string {
