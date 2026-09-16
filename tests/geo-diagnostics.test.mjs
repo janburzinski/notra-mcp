@@ -34,7 +34,8 @@ test("diagnostic client methods use the public API contracts", async () => {
   assert.equal(requests[4].searchParams.get("offset"), "20");
 });
 
-test("snapshot combines signals and preserves optional-section failures", async () => {
+test("snapshot bounds slow optional signals and preserves a warning", async () => {
+  vi.useFakeTimers();
   const client = {
     getGeoVisibilityOverview: async () => ({
       configured: true,
@@ -60,9 +61,7 @@ test("snapshot combines signals and preserves optional-section failures", async 
       hasScanData: true,
       organization,
     }),
-    getGeoAgentReadiness: async () => {
-      throw new Error("Readiness unavailable");
-    },
+    getGeoAgentReadiness: () => new Promise(() => {}),
     getGeoTrafficOverview: async () => ({
       configured: false,
       totals: { crawler: 0, aiReferral: 0 },
@@ -103,12 +102,17 @@ test("snapshot combines signals and preserves optional-section failures", async 
     listGeoShelfSources: async () => ({ sources: [], nextOffset: null, organization }),
   };
 
-  const snapshot = await loadGeoSnapshot(client, "project-1", { days: 30 });
+  const snapshotPromise = loadGeoSnapshot(client, "project-1", { days: 30 });
+  await vi.advanceTimersByTimeAsync(5_000);
+  const snapshot = await snapshotPromise;
+  vi.useRealTimers();
 
   assert.equal(snapshot.visibility.mentionRate, 0.4);
   assert.equal(snapshot.sentiment.negativeShare, 0.5);
   assert.equal(snapshot.changes.lost, 1);
-  assert.deepEqual(snapshot.warnings, [{ section: "agentReadiness", message: "Readiness unavailable" }]);
+  assert.deepEqual(snapshot.warnings, [
+    { section: "agentReadiness", message: "Optional GEO diagnostic timed out after 5s" },
+  ]);
   assert.deepEqual(
     snapshot.recommendedNextActions.map((action) => action.action),
     ["review_content_gaps", "investigate_visibility_losses", "review_negative_sentiment", "configure_ai_traffic"],

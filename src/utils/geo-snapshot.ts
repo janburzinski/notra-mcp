@@ -1,3 +1,4 @@
+import { GEO_SNAPSHOT_OPTIONAL_TIMEOUT_MS } from "../constants/geo.js";
 import type { NotraClient } from "../notra-client.js";
 import type { GeoWindowParams } from "../types/geo-common.js";
 import type { GeoSnapshotResponse } from "../types/geo-diagnostics.js";
@@ -8,34 +9,43 @@ function failureMessage(result: PromiseRejectedResult): string {
   return result.reason instanceof Error ? result.reason.message : String(result.reason);
 }
 
+function withOptionalTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error(`Optional GEO diagnostic timed out after ${GEO_SNAPSHOT_OPTIONAL_TIMEOUT_MS / 1000}s`)),
+      GEO_SNAPSHOT_OPTIONAL_TIMEOUT_MS,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
 export async function loadGeoSnapshot(
   client: NotraClient,
   projectId: string,
   window: GeoWindowParams,
 ): Promise<GeoSnapshotResponse> {
-  const [
-    overviewResult,
-    competitorResult,
-    gapsResult,
-    readinessResult,
-    trafficResult,
-    sentimentResult,
-    changesResult,
-    shelfResult,
-  ] = await Promise.allSettled([
-    client.getGeoVisibilityOverview(projectId, window),
-    client.getGeoVisibilityCompetitorShare(projectId, window),
-    client.listGeoContentGaps(projectId),
-    client.getGeoAgentReadiness(projectId),
-    client.getGeoTrafficOverview(projectId, window),
-    client.getGeoSentiment(projectId, window),
-    client.getGeoChanges(projectId),
-    client.listGeoShelfSources(projectId, { limit: SNAPSHOT_ITEM_LIMIT }),
+  const overviewPromise = client.getGeoVisibilityOverview(projectId, window);
+  const optionalResults = Promise.allSettled([
+    withOptionalTimeout(client.getGeoVisibilityCompetitorShare(projectId, window)),
+    withOptionalTimeout(client.listGeoContentGaps(projectId)),
+    withOptionalTimeout(client.getGeoAgentReadiness(projectId)),
+    withOptionalTimeout(client.getGeoTrafficOverview(projectId, window)),
+    withOptionalTimeout(client.getGeoSentiment(projectId, window)),
+    withOptionalTimeout(client.getGeoChanges(projectId)),
+    withOptionalTimeout(client.listGeoShelfSources(projectId, { limit: SNAPSHOT_ITEM_LIMIT })),
   ]);
-  if (overviewResult.status === "rejected") {
-    throw overviewResult.reason;
-  }
-  const overview = overviewResult.value;
+  const overview = await overviewPromise;
+  const [competitorResult, gapsResult, readinessResult, trafficResult, sentimentResult, changesResult, shelfResult] =
+    await optionalResults;
   const warnings: GeoSnapshotResponse["warnings"] = [];
 
   const competitors =
