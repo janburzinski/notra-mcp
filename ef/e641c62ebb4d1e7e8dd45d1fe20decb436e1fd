@@ -1,0 +1,70 @@
+src/tools/post-tools.ts
+  s_dc5538711f10de::t_55929929413d01 4,38-46
+README.md
+  s_dc5538711f10de::t_7607cd113b2a36 129,163-172,182,296-298
+src/types/agent.ts
+  s_dc5538711f10de::t_837504db0f3f12 1-16
+src/constants/post.ts
+  s_dc5538711f10de::t_10ae321dd1e015 19-20
+scripts/check-api-coverage.mjs
+  s_dc5538711f10de::t_837504db0f3f12 1-224
+src/schemas/agent.ts
+  s_dc5538711f10de::t_44f3a96ffdc0c3 1-5
+src/schemas/feedback.ts
+  s_dc5538711f10de::t_6a8a34c292e16a 3,6-21
+src/types/feedback.ts
+  s_dc5538711f10de::t_837504db0f3f12 1-48
+src/types/api.ts
+  s_dc5538711f10de::t_1c296f11b5371f 2-7,63-70,74
+src/constants/feedback.ts
+  s_dc5538711f10de::t_6cd06e741814bd 1-2
+src/types/event-trigger.ts
+  s_dc5538711f10de::t_837504db0f3f12 1-73
+src/schemas/post.ts
+  s_dc5538711f10de::t_d5b93ee67dd263 2-6,22-33
+src/notra-client.ts
+  s_dc5538711f10de::t_b061f16eebf7c4 8,40,42-54,288-289,428-469
+  s_9adfd971a49680::t_5191464bebafcd 290-291,470-471
+src/tools/feedback-tools.ts
+  s_dc5538711f10de::t_f5433df9e47119 7-11,13-14,42-72
+src/server.ts
+  s_dc5538711f10de::t_53fe95cb1974e6 5,8-9,45,47,49
+.github/workflows/checks.yml
+  s_dc5538711f10de::t_5259a045f2dff2 21-31
+src/schemas/event-trigger.ts
+  s_dc5538711f10de::t_dd3aebf8fd84e0 1-59
+src/constants/event-trigger.ts
+  s_dc5538711f10de::t_837504db0f3f12 1-10
+package.json
+  s_dc5538711f10de::t_b8f5836b92e044 19-20
+src/tools/agent-tools.ts
+  s_dc5538711f10de::t_837504db0f3f12 1-2,4-12,14-19
+  s_dc5538711f10de::t_8cfbaa66371f75 3,13
+src/tools/event-trigger-tools.ts
+  s_dc5538711f10de::t_837504db0f3f12 1-2,10-18,20,22-28,30,32-39,41,43-50,52,54-60,62,64-65
+  s_dc5538711f10de::t_c427a4f38c2654 3-9,19,21,29,31,40,42,51,53,61,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "efe641c62ebb4d1e7e8dd45d1fe20decb436e1fd",
+  "prompts": {},
+  "sessions": {
+    "s_9adfd971a49680": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fe738aa-5dce-412e-af3c-6f6707e37453",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    },
+    "s_dc5538711f10de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0abe4-2258-72c5-a225-9d45e0ac24ff",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    }
+  }
+}
