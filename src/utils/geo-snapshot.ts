@@ -9,39 +9,21 @@ function failureMessage(result: PromiseRejectedResult): string {
   return result.reason instanceof Error ? result.reason.message : String(result.reason);
 }
 
-function withOptionalTimeout<T>(promise: Promise<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error(`Optional GEO diagnostic timed out after ${GEO_SNAPSHOT_OPTIONAL_TIMEOUT_MS / 1000}s`)),
-      GEO_SNAPSHOT_OPTIONAL_TIMEOUT_MS,
-    );
-    promise.then(
-      (value) => {
-        clearTimeout(timeout);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timeout);
-        reject(error);
-      },
-    );
-  });
-}
-
 export async function loadGeoSnapshot(
   client: NotraClient,
   projectId: string,
   window: GeoWindowParams,
 ): Promise<GeoSnapshotResponse> {
   const overviewPromise = client.getGeoVisibilityOverview(projectId, window);
+  const timeout = { timeoutMs: GEO_SNAPSHOT_OPTIONAL_TIMEOUT_MS };
   const optionalResults = Promise.allSettled([
-    withOptionalTimeout(client.getGeoVisibilityCompetitorShare(projectId, window)),
-    withOptionalTimeout(client.listGeoContentGaps(projectId)),
-    withOptionalTimeout(client.getGeoAgentReadiness(projectId)),
-    withOptionalTimeout(client.getGeoTrafficOverview(projectId, window)),
-    withOptionalTimeout(client.getGeoSentiment(projectId, window)),
-    withOptionalTimeout(client.getGeoChanges(projectId)),
-    withOptionalTimeout(client.listGeoShelfSources(projectId, { limit: SNAPSHOT_ITEM_LIMIT })),
+    client.getGeoVisibilityCompetitorShare(projectId, window, timeout),
+    client.listGeoContentGaps(projectId, timeout),
+    client.getGeoAgentReadiness(projectId, timeout),
+    client.getGeoTrafficOverview(projectId, window, timeout),
+    client.getGeoSentiment(projectId, window, timeout),
+    client.getGeoChanges(projectId, timeout),
+    client.listGeoShelfSources(projectId, { limit: SNAPSHOT_ITEM_LIMIT }, timeout),
   ]);
   const overview = await overviewPromise;
   const [competitorResult, gapsResult, readinessResult, trafficResult, sentimentResult, changesResult, shelfResult] =

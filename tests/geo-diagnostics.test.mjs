@@ -35,7 +35,8 @@ test("diagnostic client methods use the public API contracts", async () => {
 });
 
 test("snapshot bounds slow optional signals and preserves a warning", async () => {
-  vi.useFakeTimers();
+  const timeouts = [];
+  const recordTimeout = (options) => timeouts.push(options?.timeoutMs);
   const client = {
     getGeoVisibilityOverview: async () => ({
       configured: true,
@@ -54,65 +55,82 @@ test("snapshot bounds slow optional signals and preserves a warning", async () =
       ],
       organization,
     }),
-    getGeoVisibilityCompetitorShare: async () => ({ points: [], timeseries: [], organization }),
-    listGeoContentGaps: async () => ({
-      promptGaps: [],
-      searchGaps: [],
-      hasScanData: true,
-      organization,
-    }),
-    getGeoAgentReadiness: () => new Promise(() => {}),
-    getGeoTrafficOverview: async () => ({
-      configured: false,
-      totals: { crawler: 0, aiReferral: 0 },
-      sources: [],
-      points: [],
-      organization,
-    }),
-    getGeoSentiment: async () => ({
-      summary: {
-        totalChecks: 10,
-        mentions: 4,
-        positive: 1,
-        neutral: 1,
-        negative: 2,
-        lastCheckedAt: "2026-09-16T00:00:00.000Z",
-        score: -0.25,
-        classifiedMentions: 4,
-        unknownMentions: 0,
-        notMentioned: 6,
-        positiveShare: 0.25,
-        neutralShare: 0.25,
-        negativeShare: 0.5,
-        classificationCoverage: 1,
-      },
-      organization,
-    }),
-    getGeoChanges: async () => ({
-      summary: {
-        gained: 0,
-        lost: 1,
-        positionImproved: 0,
-        positionDropped: 0,
-        citationsAdded: 0,
-        citationsRemoved: 1,
-      },
-      organization,
-    }),
-    listGeoShelfSources: async () => ({ sources: [], nextOffset: null, organization }),
+    getGeoVisibilityCompetitorShare: async (_projectId, _window, options) => {
+      recordTimeout(options);
+      return { points: [], timeseries: [], organization };
+    },
+    listGeoContentGaps: async (_projectId, options) => {
+      recordTimeout(options);
+      return {
+        promptGaps: [],
+        searchGaps: [],
+        hasScanData: true,
+        organization,
+      };
+    },
+    getGeoAgentReadiness: async (_projectId, options) => {
+      recordTimeout(options);
+      throw new Error("Notra API request timed out after 5s");
+    },
+    getGeoTrafficOverview: async (_projectId, _window, options) => {
+      recordTimeout(options);
+      return {
+        configured: false,
+        totals: { crawler: 0, aiReferral: 0 },
+        sources: [],
+        points: [],
+        organization,
+      };
+    },
+    getGeoSentiment: async (_projectId, _window, options) => {
+      recordTimeout(options);
+      return {
+        summary: {
+          totalChecks: 10,
+          mentions: 4,
+          positive: 1,
+          neutral: 1,
+          negative: 2,
+          lastCheckedAt: "2026-09-16T00:00:00.000Z",
+          score: -0.25,
+          classifiedMentions: 4,
+          unknownMentions: 0,
+          notMentioned: 6,
+          positiveShare: 0.25,
+          neutralShare: 0.25,
+          negativeShare: 0.5,
+          classificationCoverage: 1,
+        },
+        organization,
+      };
+    },
+    getGeoChanges: async (_projectId, options) => {
+      recordTimeout(options);
+      return {
+        summary: {
+          gained: 0,
+          lost: 1,
+          positionImproved: 0,
+          positionDropped: 0,
+          citationsAdded: 0,
+          citationsRemoved: 1,
+        },
+        organization,
+      };
+    },
+    listGeoShelfSources: async (_projectId, _params, options) => {
+      recordTimeout(options);
+      return { sources: [], nextOffset: null, organization };
+    },
   };
 
-  const snapshotPromise = loadGeoSnapshot(client, "project-1", { days: 30 });
-  await vi.advanceTimersByTimeAsync(5_000);
-  const snapshot = await snapshotPromise;
-  vi.useRealTimers();
+  const snapshot = await loadGeoSnapshot(client, "project-1", { days: 30 });
 
   assert.equal(snapshot.visibility.mentionRate, 0.4);
   assert.equal(snapshot.sentiment.negativeShare, 0.5);
   assert.equal(snapshot.changes.lost, 1);
-  assert.deepEqual(snapshot.warnings, [
-    { section: "agentReadiness", message: "Optional GEO diagnostic timed out after 5s" },
-  ]);
+  assert.deepEqual(snapshot.warnings, [{ section: "agentReadiness", message: "Notra API request timed out after 5s" }]);
+  assert.deepEqual(timeouts, [5_000, 5_000, 5_000, 5_000, 5_000, 5_000, 5_000]);
   assert.deepEqual(
     snapshot.recommendedNextActions.map((action) => action.action),
     ["review_content_gaps", "investigate_visibility_losses", "review_negative_sentiment", "configure_ai_traffic"],

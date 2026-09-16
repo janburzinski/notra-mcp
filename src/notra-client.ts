@@ -113,7 +113,7 @@ import type {
   ProjectResponse,
   UpdateProjectRequest,
 } from "./types/project.js";
-import type { RequestOptions } from "./types/request.js";
+import type { RequestOptions, RequestTimeoutOptions } from "./types/request.js";
 import type { WorkspaceContextResponse } from "./types/workspace.js";
 import { apiErrorSchema } from "./schemas/api.js";
 import { parseChatStream } from "./utils/chat-stream.js";
@@ -615,8 +615,8 @@ export class NotraClient {
     );
   }
 
-  async getGeoChanges(projectId: string): Promise<GeoChangesResponse> {
-    return this.request<GeoChangesResponse>("GET", this.geoPath(projectId, "/changes"));
+  async getGeoChanges(projectId: string, options?: RequestTimeoutOptions): Promise<GeoChangesResponse> {
+    return this.request<GeoChangesResponse>("GET", this.geoPath(projectId, "/changes"), options);
   }
 
   async getGeoPromptHistory(projectId: string, promptId: string, scanId?: string): Promise<GeoPromptHistoryResponse> {
@@ -627,8 +627,15 @@ export class NotraClient {
     );
   }
 
-  async getGeoSentiment(projectId: string, params?: GeoWindowParams): Promise<GeoSentimentResponse> {
-    return this.request<GeoSentimentResponse>("GET", this.geoPath(projectId, "/sentiment"), { params });
+  async getGeoSentiment(
+    projectId: string,
+    params?: GeoWindowParams,
+    options?: RequestTimeoutOptions,
+  ): Promise<GeoSentimentResponse> {
+    return this.request<GeoSentimentResponse>("GET", this.geoPath(projectId, "/sentiment"), {
+      params,
+      ...options,
+    });
   }
 
   async getGeoSentimentAnalysis(projectId: string, params?: GeoWindowParams): Promise<GeoSentimentAnalysisResponse> {
@@ -649,18 +656,23 @@ export class NotraClient {
   async listGeoShelfSources(
     projectId: string,
     params?: { offset?: number; limit?: number },
+    options?: RequestTimeoutOptions,
   ): Promise<GeoShelfListResponse> {
-    return this.request<GeoShelfListResponse>("GET", this.geoPath(projectId, "/shelf-sources"), { params });
+    return this.request<GeoShelfListResponse>("GET", this.geoPath(projectId, "/shelf-sources"), {
+      params,
+      ...options,
+    });
   }
 
   async getGeoVisibilityCompetitorShare(
     projectId: string,
     params?: GeoWindowParams,
+    options?: RequestTimeoutOptions,
   ): Promise<GeoVisibilityCompetitorShareResponse> {
     return this.request<GeoVisibilityCompetitorShareResponse>(
       "GET",
       this.geoPath(projectId, "/visibility/competitor-share"),
-      { params },
+      { params, ...options },
     );
   }
 
@@ -687,8 +699,8 @@ export class NotraClient {
     );
   }
 
-  async listGeoContentGaps(projectId: string): Promise<GeoContentGapsResponse> {
-    return this.request<GeoContentGapsResponse>("GET", this.geoPath(projectId, "/gaps"));
+  async listGeoContentGaps(projectId: string, options?: RequestTimeoutOptions): Promise<GeoContentGapsResponse> {
+    return this.request<GeoContentGapsResponse>("GET", this.geoPath(projectId, "/gaps"), options);
   }
 
   async listGeoContentBriefs(projectId: string): Promise<GeoContentBriefListResponse> {
@@ -717,17 +729,22 @@ export class NotraClient {
     );
   }
 
-  async getGeoAgentReadiness(projectId: string): Promise<GeoAgentReadinessResponse> {
-    return this.request<GeoAgentReadinessResponse>("GET", this.geoPath(projectId, "/agent-readiness"));
+  async getGeoAgentReadiness(projectId: string, options?: RequestTimeoutOptions): Promise<GeoAgentReadinessResponse> {
+    return this.request<GeoAgentReadinessResponse>("GET", this.geoPath(projectId, "/agent-readiness"), options);
   }
 
   async startGeoAgentReadinessScan(projectId: string): Promise<StartGeoAgentReadinessScanResponse> {
     return this.request<StartGeoAgentReadinessScanResponse>("POST", this.geoPath(projectId, "/agent-readiness/scan"));
   }
 
-  async getGeoTrafficOverview(projectId: string, params?: GeoWindowParams): Promise<GeoTrafficOverviewResponse> {
+  async getGeoTrafficOverview(
+    projectId: string,
+    params?: GeoWindowParams,
+    options?: RequestTimeoutOptions,
+  ): Promise<GeoTrafficOverviewResponse> {
     return this.request<GeoTrafficOverviewResponse>("GET", this.geoPath(projectId, "/traffic/overview"), {
       params,
+      ...options,
     });
   }
 
