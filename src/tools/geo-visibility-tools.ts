@@ -2,9 +2,11 @@ import {
   getGeoVisibilityOverviewSchema,
   getGeoVisibilityTimeseriesSchema,
   getGeoPromptResultsSchema,
+  getGeoPromptResultDetailSchema,
   getGeoCompetitorShareSchema,
   getGeoLanguageShareSchema,
   getGeoCompetitorDetailSchema,
+  listGeoPromptResultSummariesSchema,
 } from "../schemas/geo-visibility.js";
 import type { McpServer } from "@modelcontextprotocol/server";
 
@@ -38,11 +40,32 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
     "get_geo_prompt_results",
     {
       description:
-        "Get the latest stored answer per tracked prompt and engine: answer text, mention position, sentiment and grounding sources",
+        "Get every latest stored answer per tracked prompt and engine. This can be large; prefer list_geo_prompt_result_summaries and targeted detail.",
       annotations: { title: "Get GEO Prompt Results", readOnlyHint: true },
       inputSchema: getGeoPromptResultsSchema,
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityPromptResults(projectId, params)),
+  );
+
+  server.registerTool(
+    "list_geo_prompt_result_summaries",
+    {
+      description:
+        "List filtered, paginated GEO prompt results without full answer text or sources. Use checkId with get_geo_prompt_result_detail.",
+      annotations: { title: "List GEO Prompt Result Summaries", readOnlyHint: true },
+      inputSchema: listGeoPromptResultSummariesSchema,
+    },
+    ({ projectId, ...params }) => handleError(() => client.listGeoPromptResultSummaries(projectId, params)),
+  );
+
+  server.registerTool(
+    "get_geo_prompt_result_detail",
+    {
+      description: "Get the full answer, grounding sources and token metadata for one GEO check",
+      annotations: { title: "Get GEO Prompt Result Detail", readOnlyHint: true },
+      inputSchema: getGeoPromptResultDetailSchema,
+    },
+    ({ projectId, checkId }) => handleError(() => client.getGeoPromptResultDetail(projectId, checkId)),
   );
 
   server.registerTool(
