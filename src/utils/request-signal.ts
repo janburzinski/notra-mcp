@@ -1,6 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-
-type RequestScope = { signal?: AbortSignal };
+import type { RequestScope } from "../types/request.js";
 
 const requestScope = new AsyncLocalStorage<RequestScope>();
 
@@ -26,4 +25,12 @@ export async function runWithRequestSignal<T>(signal: AbortSignal | undefined, f
 
 export function getRequestSignal(): AbortSignal | undefined {
   return requestScope.getStore()?.signal;
+}
+
+/** Combines a request deadline with caller and MCP request cancellation. */
+export function createRequestSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
+  const signals = [AbortSignal.timeout(timeoutMs), signal, getRequestSignal()].filter(
+    (candidate): candidate is AbortSignal => candidate !== undefined,
+  );
+  return signals.length === 1 ? signals[0] : AbortSignal.any(signals);
 }

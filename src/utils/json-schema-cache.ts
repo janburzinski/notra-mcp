@@ -1,19 +1,8 @@
 import type { StandardSchemaWithJSON } from "@modelcontextprotocol/server";
-
-type JsonSchemaConverter = StandardSchemaWithJSON["~standard"]["jsonSchema"];
-type JsonSchemaOptions = Parameters<JsonSchemaConverter["input"]>[0];
+import type { JsonSchemaConverter, JsonSchemaOptions } from "../types/json-schema.js";
+import { deepFreeze } from "./deep-freeze.js";
 
 const cachedSchemas = new WeakSet<object>();
-
-function deepFreeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) {
-      deepFreeze(child);
-    }
-  }
-  return value;
-}
 
 /**
  * The SDK converts a tool's zod schema to JSON Schema on every registration and

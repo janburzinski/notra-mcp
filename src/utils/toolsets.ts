@@ -1,4 +1,4 @@
-import { TOOLSET_VALUES } from "../constants/toolsets.js";
+import { TOOLSET_VALUES } from "../constants/toolset.js";
 import type { Toolset } from "../types/toolset.js";
 
 /**

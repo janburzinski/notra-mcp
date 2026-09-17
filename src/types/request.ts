@@ -9,3 +9,7 @@ export interface RequestOptions<
   params?: object;
   body?: B;
 }
+
+export type RequestScope = {
+  signal?: AbortSignal;
+};

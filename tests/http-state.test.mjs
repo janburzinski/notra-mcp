@@ -251,6 +251,9 @@ test("oversized and malformed bodies are answered as JSON-RPC errors", () => {
   const malformed = response();
   errorHandler({ status: 400, type: "entity.parse.failed" }, {}, malformed, vi.fn());
   expect(malformed.json.mock.calls[0][0].error.code).toBe(-32700);
+  const unsupported = response();
+  errorHandler({ status: 415, type: "encoding.unsupported" }, {}, unsupported, vi.fn());
+  expect(unsupported.json.mock.calls[0][0].error).toEqual({ code: -32600, message: "Invalid request body" });
   const next = vi.fn();
   const unexpected = new Error("boom");
   errorHandler(unexpected, {}, response(), next);
@@ -313,4 +316,26 @@ test("legacy sessions only register the requested toolsets", async () => {
   expect(state.tools.has("get_geo_snapshot")).toBe(false);
   expect(state.tools.has("list_projects")).toBe(false);
   expect(state.tools.has("whoami")).toBe(true);
+});
+
+test.each(["-1", "0", "abc"])("invalid NOTRA_MCP_MAX_SESSIONS=%s falls back to the default cap", async (value) => {
+  vi.resetModules();
+  state.routes.clear();
+  state.middleware.length = 0;
+  vi.stubEnv("NOTRA_MCP_MAX_SESSIONS", value);
+  ({ authenticateBearerToken } = await import("../src/utils/auth.ts"));
+  await import("../src/http.ts");
+  const sessions = [];
+  for (let i = 0; i < 5; i++) sessions.push(await initializeSession());
+  authenticateBearerToken.mockResolvedValue({
+    kind: "oauth",
+    token: "original",
+    userId: "user-1",
+    organizationId: "org-1",
+    scopes: ["posts.read"],
+  });
+  for (const transport of sessions) {
+    expect(transport.close).not.toHaveBeenCalled();
+    expect(await sessionStatus(transport)).toBe(200);
+  }
 });

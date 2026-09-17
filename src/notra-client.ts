@@ -133,7 +133,7 @@ import type { WorkspaceContextResponse } from "./types/workspace.js";
 import { apiErrorSchema } from "./schemas/api.js";
 import { parseChatStream } from "./utils/chat-stream.js";
 import { appendQueryParams } from "./utils/query-params.js";
-import { getRequestSignal } from "./utils/request-signal.js";
+import { createRequestSignal } from "./utils/request-signal.js";
 
 const NOTRA_API_BASE = process.env.NOTRA_API_BASE ?? "https://api.usenotra.com";
 
@@ -147,14 +147,6 @@ function asTimeoutError(error: unknown, timeoutMs: number): Error | undefined {
     return new Error(`Notra API request timed out after ${timeoutMs / 1000}s`);
   }
   return undefined;
-}
-
-/** Combines the request deadline with caller and MCP request cancellation. */
-function requestSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
-  const signals = [AbortSignal.timeout(timeoutMs), signal, getRequestSignal()].filter(
-    (candidate): candidate is AbortSignal => candidate !== undefined,
-  );
-  return signals.length === 1 ? signals[0] : AbortSignal.any(signals);
 }
 
 export class NotraClient {
@@ -180,7 +172,7 @@ export class NotraClient {
     };
 
     const timeoutMs = options?.timeoutMs ?? 30_000;
-    const fetchOptions: RequestInit = { method, headers, signal: requestSignal(timeoutMs, options?.signal) };
+    const fetchOptions: RequestInit = { method, headers, signal: createRequestSignal(timeoutMs, options?.signal) };
     if (options?.body && (method === "POST" || method === "PATCH" || method === "PUT")) {
       fetchOptions.body = JSON.stringify(options.body);
     }
@@ -233,7 +225,7 @@ export class NotraClient {
     };
 
     const timeoutMs = options?.timeoutMs ?? 180_000;
-    const fetchOptions: RequestInit = { method, headers, signal: requestSignal(timeoutMs, options?.signal) };
+    const fetchOptions: RequestInit = { method, headers, signal: createRequestSignal(timeoutMs, options?.signal) };
     if (options?.body && (method === "POST" || method === "PATCH" || method === "PUT")) {
       fetchOptions.body = JSON.stringify(options.body);
     }

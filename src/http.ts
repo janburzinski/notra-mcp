@@ -14,6 +14,7 @@ import {
 import { OAUTH_AUTHORIZATION_SERVER_METADATA_PATH, OAUTH_PROTECTED_RESOURCE_METADATA_PATH } from "./constants/oauth.js";
 import { createServer } from "./server.js";
 import type { AuthContext } from "./types/auth.js";
+import type { BodyParserError, Session } from "./types/http.js";
 import type { Toolset } from "./types/toolset.js";
 import { authenticateBearerToken, parseBearerToken } from "./utils/auth.js";
 import { getMcpResourceUrl, getOAuthConfig, getProtectedResourceMetadata } from "./utils/oauth-config.js";
@@ -22,7 +23,8 @@ import { parseToolsets } from "./utils/toolsets.js";
 const app = createMcpExpressApp({ host: "0.0.0.0", jsonLimit: String(MCP_JSON_BODY_LIMIT_BYTES) });
 
 const SESSION_TOKEN_DIGEST_KEY = randomBytes(32);
-const MAX_SESSIONS = Number.parseInt(process.env.NOTRA_MCP_MAX_SESSIONS ?? "", 10) || DEFAULT_MAX_SESSIONS;
+const configuredMaxSessions = Number.parseInt(process.env.NOTRA_MCP_MAX_SESSIONS ?? "", 10);
+const MAX_SESSIONS = configuredMaxSessions > 0 ? configuredMaxSessions : DEFAULT_MAX_SESSIONS;
 const oauthConfig = getOAuthConfig();
 
 const modernHandler = createMcpHandler(
@@ -39,13 +41,6 @@ const modernHandler = createMcpHandler(
     },
   },
 );
-
-type Session = {
-  transport: NodeStreamableHTTPServerTransport;
-  tokenDigest: Buffer;
-  auth: AuthContext;
-  lastSeen: number;
-};
 
 const sessions = new Map<string, Session>();
 
@@ -397,22 +392,18 @@ app.get("/health", (_req, res) => {
 
 // Body parser failures (oversized or malformed JSON) would otherwise be answered
 // with Express's HTML error page, which MCP clients cannot surface.
-app.use((error: { status?: number; type?: string }, _req: Request, res: Response, next: NextFunction) => {
+app.use((error: BodyParserError, _req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent || !error.status || error.status >= 500) {
     next(error);
     return;
   }
-  const tooLarge = error.type === "entity.too.large";
-  res.status(error.status).json({
-    jsonrpc: "2.0",
-    error: {
-      code: tooLarge ? -32600 : -32700,
-      message: tooLarge
-        ? `Request body exceeds the ${MCP_JSON_BODY_LIMIT_BYTES / (1024 * 1024)} MB limit`
-        : "Parse error: invalid JSON",
-    },
-    id: null,
-  });
+  const rpcError =
+    error.type === "entity.too.large"
+      ? { code: -32600, message: `Request body exceeds the ${MCP_JSON_BODY_LIMIT_BYTES / (1024 * 1024)} MB limit` }
+      : error.type === "entity.parse.failed"
+        ? { code: -32700, message: "Parse error: invalid JSON" }
+        : { code: -32600, message: "Invalid request body" };
+  res.status(error.status).json({ jsonrpc: "2.0", error: rpcError, id: null });
 });
 
 const PORT = parseInt(process.env.PORT || "3000", 10);

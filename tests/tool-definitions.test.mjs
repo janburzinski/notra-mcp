@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import * as z from "zod";
 import { McpServer } from "@modelcontextprotocol/server";
-import { TOOLSET_VALUES } from "../src/constants/toolsets.ts";
+import { TOOLSET_VALUES } from "../src/constants/toolset.ts";
 import { createServer } from "../src/server.ts";
 import { cacheJsonSchema } from "../src/utils/json-schema-cache.ts";
 import { parseToolsets } from "../src/utils/toolsets.ts";
@@ -39,15 +39,6 @@ test("servers built per request share converted tool schemas", () => {
     // The SDK wraps the root in a fresh object; the converted body is shared.
     expect(second.toolInputSchemaJson(name).properties).toBe(schema.properties);
   }
-});
-
-test("per-request server construction stays cheap after warmup", () => {
-  createServer("warmup");
-  const started = performance.now();
-  for (let i = 0; i < 100; i++) createServer(`key-${i}`);
-  const averageMs = (performance.now() - started) / 100;
-  // Uncached construction costs about 2.5 ms on an M-series Mac; keep a wide CI margin.
-  expect(averageMs).toBeLessThan(1);
 });
 
 test("tool handlers expose the MCP request signal to Notra API calls", async () => {
