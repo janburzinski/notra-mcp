@@ -13,6 +13,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
+import { apiOutputSchema } from "../utils/output-schema.js";
 
 export function registerGeoTrafficTools(server: McpServer, client: NotraClient) {
   server.registerTool(
@@ -27,6 +28,7 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
         destructiveHint: false,
       },
       inputSchema: getGeoTrafficOverviewSchema,
+      outputSchema: apiOutputSchema("getGeoTrafficOverview"),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoTrafficOverview(projectId, params)),
   );
@@ -38,6 +40,7 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
         "Get the most recent individual requests from AI crawlers and referrals. This endpoint has no time window; use limit to bound it.",
       annotations: { title: "Get AI Traffic Log", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: getGeoTrafficLogSchema,
+      outputSchema: apiOutputSchema("getGeoTrafficLog"),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoTrafficLog(projectId, params)),
   );
@@ -54,6 +57,7 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
         destructiveHint: false,
       },
       inputSchema: listGeoTrafficJourneysSchema,
+      outputSchema: apiOutputSchema("listGeoTrafficJourneys"),
     },
     ({ projectId, ...params }) => handleError(() => client.listGeoTrafficJourneys(projectId, params)),
   );
@@ -69,6 +73,7 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
         destructiveHint: false,
       },
       inputSchema: getGeoTrafficJourneySchema,
+      outputSchema: apiOutputSchema("getGeoTrafficJourney"),
     },
     ({ projectId, journeyId, ...params }) =>
       handleError(() => client.getGeoTrafficJourney(projectId, journeyId, params)),
@@ -81,6 +86,7 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
         "List the pages AI crawlers and referrals read most, with the previous window's count for comparison",
       annotations: { title: "List AI Traffic Pages", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: listGeoTrafficPagesSchema,
+      outputSchema: apiOutputSchema("listGeoTrafficPages"),
     },
     ({ projectId, ...params }) => handleError(() => client.listGeoTrafficPages(projectId, params)),
   );
@@ -97,6 +103,7 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
         destructiveHint: false,
       },
       inputSchema: getGeoIngestSetupSchema,
+      outputSchema: apiOutputSchema("getGeoIngestSetup"),
     },
     () => handleError(() => client.getGeoIngestSetup()),
   );
@@ -113,6 +120,7 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
         destructiveHint: false,
       },
       inputSchema: issueGeoIngestTokenSchema,
+      outputSchema: apiOutputSchema("issueGeoIngestToken"),
     },
     ({ projectId }) => handleError(() => client.issueGeoIngestToken(projectId)),
   );
@@ -129,6 +137,7 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
         destructiveHint: true,
       },
       inputSchema: rotateGeoIngestTokenSchema,
+      outputSchema: apiOutputSchema("rotateGeoIngestToken"),
     },
     ({ projectId }) => handleError(() => client.rotateGeoIngestToken(projectId)),
   );

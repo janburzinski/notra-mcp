@@ -11,6 +11,7 @@ import { geoCompetitorImportSchema } from "../schemas/geo-import.js";
 
 import { toImportSource } from "../utils/import-source.js";
 import { handleError } from "../utils/mcp.js";
+import { apiOutputSchema } from "../utils/output-schema.js";
 
 export function registerGeoCompetitorTools(server: McpServer, client: NotraClient) {
   server.registerTool(
@@ -19,6 +20,7 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
       description: "List the competitors tracked for a project's GEO share-of-voice reporting",
       annotations: { title: "List GEO Competitors", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: listGeoCompetitorsSchema,
+      outputSchema: apiOutputSchema("listGeoCompetitors"),
     },
     ({ projectId }) => handleError(() => client.listGeoCompetitors(projectId)),
   );
@@ -36,6 +38,7 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
         idempotentHint: true,
       },
       inputSchema: upsertGeoCompetitorSchema,
+      outputSchema: apiOutputSchema("upsertGeoCompetitor"),
     },
     ({ projectId, ...body }) => handleError(() => client.upsertGeoCompetitor(projectId, body)),
   );
@@ -52,6 +55,7 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: suggestGeoCompetitorsSchema,
+      outputSchema: apiOutputSchema("suggestGeoCompetitors"),
     },
     ({ projectId, domain }) => handleError(() => client.suggestGeoCompetitors(projectId, domain)),
   );
@@ -68,6 +72,7 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
         idempotentHint: true,
       },
       inputSchema: deleteGeoCompetitorSchema,
+      outputSchema: apiOutputSchema("deleteGeoCompetitor"),
     },
     ({ projectId, name }) => handleError(() => client.deleteGeoCompetitor(projectId, name)),
   );
@@ -84,6 +89,7 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
         destructiveHint: true,
       },
       inputSchema: geoCompetitorImportSchema,
+      outputSchema: apiOutputSchema("importGeoCompetitors"),
     },
     ({ projectId, rows, csv }) => handleError(() => client.importGeoCompetitors(projectId, toImportSource(rows, csv))),
   );

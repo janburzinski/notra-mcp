@@ -13,6 +13,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
+import { apiOutputSchema } from "../utils/output-schema.js";
 
 export function registerGeoVisibilityTools(server: McpServer, client: NotraClient) {
   server.registerTool(
@@ -27,6 +28,7 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: getGeoVisibilityOverviewSchema,
+      outputSchema: apiOutputSchema("getGeoVisibilityOverview"),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityOverview(projectId, params)),
   );
@@ -42,6 +44,7 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: getGeoVisibilityTimeseriesSchema,
+      outputSchema: apiOutputSchema("getGeoVisibilityTimeseries"),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityTimeseries(projectId, params)),
   );
@@ -58,6 +61,7 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: getGeoPromptResultsSchema,
+      outputSchema: apiOutputSchema("getGeoVisibilityPromptResults"),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityPromptResults(projectId, params)),
   );
@@ -74,6 +78,7 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: listGeoPromptResultSummariesSchema,
+      outputSchema: apiOutputSchema("listGeoPromptResultSummaries"),
     },
     ({ projectId, ...params }) => handleError(() => client.listGeoPromptResultSummaries(projectId, params)),
   );
@@ -89,6 +94,7 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: getGeoPromptResultDetailSchema,
+      outputSchema: apiOutputSchema("getGeoPromptResultDetail"),
     },
     ({ projectId, checkId }) => handleError(() => client.getGeoPromptResultDetail(projectId, checkId)),
   );
@@ -105,6 +111,7 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: getGeoCompetitorShareSchema,
+      outputSchema: apiOutputSchema("getGeoVisibilityCompetitorShare"),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityCompetitorShare(projectId, params)),
   );
@@ -120,6 +127,7 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: getGeoLanguageShareSchema,
+      outputSchema: apiOutputSchema("getGeoVisibilityLanguageShare"),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityLanguageShare(projectId, params)),
   );
@@ -136,6 +144,7 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: getGeoCompetitorDetailSchema,
+      outputSchema: apiOutputSchema("getGeoVisibilityCompetitorDetail"),
     },
     ({ projectId, brand, ...params }) =>
       handleError(() => client.getGeoVisibilityCompetitorDetail(projectId, brand, params)),

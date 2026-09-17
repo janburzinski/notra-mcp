@@ -4,6 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
+import { apiOutputSchema } from "../utils/output-schema.js";
 
 export function registerGeoSettingsTools(server: McpServer, client: NotraClient) {
   server.registerTool(
@@ -13,6 +14,7 @@ export function registerGeoSettingsTools(server: McpServer, client: NotraClient)
         "Get a project's GEO settings: tracked company name, aliases, languages, answer engines and the recurring scan configuration",
       annotations: { title: "Get GEO Settings", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: getGeoSettingsSchema,
+      outputSchema: apiOutputSchema("getGeoSettings"),
     },
     ({ projectId }) => handleError(() => client.getGeoSettings(projectId)),
   );
@@ -30,6 +32,7 @@ export function registerGeoSettingsTools(server: McpServer, client: NotraClient)
         idempotentHint: true,
       },
       inputSchema: updateGeoSettingsSchema,
+      outputSchema: apiOutputSchema("updateGeoSettings"),
     },
     ({ projectId, ...body }) => handleError(() => client.updateGeoSettings(projectId, body)),
   );

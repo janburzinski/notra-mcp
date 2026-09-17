@@ -10,6 +10,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 
 import type { NotraClient } from "../notra-client.js";
 import { handleError } from "../utils/mcp.js";
+import { apiOutputSchema } from "../utils/output-schema.js";
 
 export function registerBrandIdentityTools(server: McpServer, client: NotraClient) {
   server.registerTool(
@@ -18,6 +19,7 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
       description: "List all brand identities configured for your organization",
       annotations: { title: "List Brand Identities", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: listBrandIdentitiesSchema,
+      outputSchema: apiOutputSchema("listBrandIdentities"),
     },
     () => handleError(() => client.listBrandIdentities()),
   );
@@ -28,6 +30,7 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
       description: "Get a single brand identity by its ID, including tone, audience, and language settings",
       annotations: { title: "Get Brand Identity", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: getBrandIdentitySchema,
+      outputSchema: apiOutputSchema("getBrandIdentity"),
     },
     ({ brandIdentityId }) => handleError(() => client.getBrandIdentity(brandIdentityId)),
   );
@@ -44,6 +47,7 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
         idempotentHint: true,
       },
       inputSchema: updateBrandIdentitySchema,
+      outputSchema: apiOutputSchema("updateBrandIdentity"),
     },
     ({ brandIdentityId, ...body }) => handleError(() => client.updateBrandIdentity(brandIdentityId, body)),
   );
@@ -60,6 +64,7 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
         idempotentHint: true,
       },
       inputSchema: deleteBrandIdentitySchema,
+      outputSchema: apiOutputSchema("deleteBrandIdentity"),
     },
     ({ brandIdentityId }) => handleError(() => client.deleteBrandIdentity(brandIdentityId)),
   );
@@ -76,6 +81,7 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: generateBrandIdentitySchema,
+      outputSchema: apiOutputSchema("createBrandIdentity"),
     },
     (params) => handleError(() => client.generateBrandIdentity(params)),
   );
@@ -91,6 +97,7 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
         destructiveHint: false,
       },
       inputSchema: getBrandIdentityGenerationStatusSchema,
+      outputSchema: apiOutputSchema("getBrandIdentityGeneration"),
     },
     ({ jobId }) => handleError(() => client.getBrandIdentityGenerationStatus(jobId)),
   );
