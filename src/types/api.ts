@@ -1,5 +1,10 @@
 import type { LANGUAGE_VALUES } from "../constants/brand-identity.js";
-import type { CONTENT_TYPE_VALUES, GENERATABLE_CONTENT_TYPE_VALUES, POST_STATUS_VALUES } from "../constants/post.js";
+import type {
+  CONTENT_TYPE_VALUES,
+  CREATABLE_CONTENT_TYPE_VALUES,
+  GENERATABLE_CONTENT_TYPE_VALUES,
+  POST_STATUS_VALUES,
+} from "../constants/post.js";
 
 export interface Organization {
   id: string;
@@ -55,9 +60,18 @@ export interface PostDeleteResponse {
   organization: Organization;
 }
 
+export interface CreatePostRequest {
+  title: string;
+  contentType: CreatableContentType;
+  slug?: string | null;
+  markdown?: string;
+  status?: PostStatus;
+}
+
 export type PostStatus = (typeof POST_STATUS_VALUES)[number];
 export type ContentType = (typeof CONTENT_TYPE_VALUES)[number];
 export type GeneratableContentType = (typeof GENERATABLE_CONTENT_TYPE_VALUES)[number];
+export type CreatableContentType = (typeof CREATABLE_CONTENT_TYPE_VALUES)[number];
 export type LookbackWindow = "current_day" | "yesterday" | "last_7_days" | "last_14_days" | "last_30_days";
 export type ToneProfile = "Conversational" | "Professional" | "Casual" | "Formal";
 

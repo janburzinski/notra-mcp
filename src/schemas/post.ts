@@ -1,5 +1,9 @@
 import * as z from "zod";
-import { GENERATABLE_CONTENT_TYPE_VALUES } from "../constants/post.js";
+import {
+  CREATABLE_CONTENT_TYPE_VALUES,
+  GENERATABLE_CONTENT_TYPE_VALUES,
+  POST_STATUS_VALUES,
+} from "../constants/post.js";
 import { brandIdentityIdFilterSchema, contentTypeFilterSchema, statusFilterSchema } from "./post-filters.js";
 
 export const listPostsSchema = z.object({
@@ -13,6 +17,20 @@ export const listPostsSchema = z.object({
 
 export const getPostSchema = z.object({
   postId: z.string().min(1).describe("The post ID to retrieve"),
+});
+
+export const createPostSchema = z.object({
+  title: z.string().trim().min(1).describe("Post title"),
+  contentType: z.enum(CREATABLE_CONTENT_TYPE_VALUES).describe("Type of post"),
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .nullable()
+    .optional()
+    .describe("URL slug, blog posts and changelogs only. Normalized to lowercase letters, numbers and hyphens."),
+  markdown: z.string().optional().describe("Post body in Markdown. Omit for an empty draft."),
+  status: z.enum(POST_STATUS_VALUES).optional().describe("Publication status (default: draft)"),
 });
 
 export const updatePostSchema = z.object({

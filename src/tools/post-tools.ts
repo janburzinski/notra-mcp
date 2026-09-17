@@ -1,6 +1,7 @@
 import {
   listPostsSchema,
   getPostSchema,
+  createPostSchema,
   updatePostSchema,
   deletePostSchema,
   generatePostSchema,
@@ -32,6 +33,17 @@ export function registerPostTools(server: McpServer, client: NotraClient) {
       inputSchema: getPostSchema,
     },
     ({ postId }) => handleError(() => client.getPost(postId)),
+  );
+
+  server.registerTool(
+    "create_post",
+    {
+      description:
+        "Create a post directly from your own title and markdown, without AI generation. Omit markdown to create an empty draft to fill in later with update_post. Slugs are only accepted for blog posts and changelogs.",
+      annotations: { title: "Create Post", destructiveHint: false },
+      inputSchema: createPostSchema,
+    },
+    (body) => handleError(() => client.createPost(body)),
   );
 
   server.registerTool(
