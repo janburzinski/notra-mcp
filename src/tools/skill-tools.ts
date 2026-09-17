@@ -6,12 +6,14 @@ import {
   deleteSkillSchema,
 } from "../schemas/skill.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerSkillTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_skills",
     {
       description: "List reusable writing skills for your organization",
@@ -21,7 +23,8 @@ export function registerSkillTools(server: McpServer, client: NotraClient) {
     () => handleError(() => client.listSkills()),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_skill",
     {
       description: "Get a single reusable writing skill by name",
@@ -31,7 +34,8 @@ export function registerSkillTools(server: McpServer, client: NotraClient) {
     ({ name }) => handleError(() => client.getSkill(name)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_skill",
     {
       description: "Create a reusable writing skill",
@@ -41,7 +45,8 @@ export function registerSkillTools(server: McpServer, client: NotraClient) {
     (params) => handleError(() => client.createSkill(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_skill",
     {
       description: "Update a reusable writing skill by name",
@@ -51,7 +56,8 @@ export function registerSkillTools(server: McpServer, client: NotraClient) {
     ({ currentName, ...body }) => handleError(() => client.updateSkill(currentName, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_skill",
     {
       description: "Delete a reusable writing skill by name",

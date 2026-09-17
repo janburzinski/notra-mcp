@@ -1,12 +1,14 @@
 import { getGeoSettingsSchema, updateGeoSettingsSchema } from "../schemas/geo-settings.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoSettingsTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_settings",
     {
       description:
@@ -17,7 +19,8 @@ export function registerGeoSettingsTools(server: McpServer, client: NotraClient)
     ({ projectId }) => handleError(() => client.getGeoSettings(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_geo_settings",
     {
       description:

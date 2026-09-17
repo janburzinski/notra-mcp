@@ -9,13 +9,15 @@ import {
   listGeoPromptResultSummariesSchema,
 } from "../schemas/geo-visibility.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoVisibilityTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_visibility_overview",
     {
       description:
@@ -26,7 +28,8 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityOverview(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_visibility_timeseries",
     {
       description: "Get daily GEO mention counts per answer engine, one point per day and engine",
@@ -36,7 +39,8 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityTimeseries(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_prompt_results",
     {
       description:
@@ -47,7 +51,8 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityPromptResults(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_prompt_result_summaries",
     {
       description:
@@ -58,7 +63,8 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
     ({ projectId, ...params }) => handleError(() => client.listGeoPromptResultSummaries(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_prompt_result_detail",
     {
       description: "Get the full answer, grounding sources and token metadata for one GEO check",
@@ -68,7 +74,8 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
     ({ projectId, checkId }) => handleError(() => client.getGeoPromptResultDetail(projectId, checkId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_competitor_share",
     {
       description:
@@ -79,7 +86,8 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityCompetitorShare(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_language_share",
     {
       description: "Get GEO mention rates broken down by tracked language",
@@ -89,7 +97,8 @@ export function registerGeoVisibilityTools(server: McpServer, client: NotraClien
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityLanguageShare(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_competitor_detail",
     {
       description:

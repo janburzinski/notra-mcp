@@ -1,12 +1,14 @@
 import { createGeoScanSchema, listGeoScansSchema, getGeoScanSchema } from "../schemas/geo-scan.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoScanTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "create_geo_scan",
     {
       description:
@@ -17,7 +19,8 @@ export function registerGeoScanTools(server: McpServer, client: NotraClient) {
     ({ projectId }) => handleError(() => client.createGeoScan(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_scans",
     {
       description:
@@ -28,7 +31,8 @@ export function registerGeoScanTools(server: McpServer, client: NotraClient) {
     ({ projectId, ...params }) => handleError(() => client.listGeoScans(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_scan",
     {
       description:

@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 import {
   buildFeedbackToolDescription,
   createFeedbackToolHandler,
@@ -21,7 +22,8 @@ import { handleError } from "../utils/mcp.js";
 export function registerFeedbackTools(server: McpServer, options: FeedbackToolOptions) {
   const handle = createFeedbackToolHandler(options);
 
-  server.registerTool(
+  registerTool(
+    server,
     options.toolName ?? "submit_feedback",
     {
       description: options.description ?? buildFeedbackToolDescription(options.productName),
@@ -41,7 +43,8 @@ export function registerFeedbackTools(server: McpServer, options: FeedbackToolOp
 }
 
 export function registerFeedbackInboxTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_feedback",
     {
       description:
@@ -52,7 +55,8 @@ export function registerFeedbackInboxTools(server: McpServer, client: NotraClien
     (params) => handleError(() => client.listFeedback(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_feedback",
     {
       description: "Get a single feedback entry with its full message, agent metadata and context URL",
@@ -62,7 +66,8 @@ export function registerFeedbackInboxTools(server: McpServer, client: NotraClien
     ({ feedbackId }) => handleError(() => client.getFeedback(feedbackId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_feedback",
     {
       description: "Set the triage status of a feedback entry: new, triaged, resolved or archived",

@@ -5,6 +5,7 @@ import {
   deleteGeoCompetitorSchema,
 } from "../schemas/geo-competitor.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 import { geoCompetitorImportSchema } from "../schemas/geo-import.js";
@@ -13,7 +14,8 @@ import { toImportSource } from "../utils/import-source.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoCompetitorTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_competitors",
     {
       description: "List the competitors tracked for a project's GEO share-of-voice reporting",
@@ -23,7 +25,8 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
     ({ projectId }) => handleError(() => client.listGeoCompetitors(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "upsert_geo_competitor",
     {
       description:
@@ -34,7 +37,8 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
     ({ projectId, ...body }) => handleError(() => client.upsertGeoCompetitor(projectId, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "suggest_geo_competitors",
     {
       description:
@@ -45,7 +49,8 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
     ({ projectId, domain }) => handleError(() => client.suggestGeoCompetitors(projectId, domain)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_geo_competitor",
     {
       description: "Stop tracking a GEO competitor. The name is matched case-insensitively.",
@@ -55,7 +60,8 @@ export function registerGeoCompetitorTools(server: McpServer, client: NotraClien
     ({ projectId, name }) => handleError(() => client.deleteGeoCompetitor(projectId, name)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "import_geo_competitors",
     {
       description:

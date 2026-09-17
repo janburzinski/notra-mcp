@@ -6,13 +6,15 @@ import {
   runGeoSequenceSchema,
 } from "../schemas/geo-sequence.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoSequenceTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_sequences",
     {
       description: "List a project's GEO prompt sequences (multi-turn conversations played against answer engines)",
@@ -22,7 +24,8 @@ export function registerGeoSequenceTools(server: McpServer, client: NotraClient)
     ({ projectId }) => handleError(() => client.listGeoSequences(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_geo_sequence",
     {
       description: "Create a GEO prompt sequence: an ordered list of prompts played as one conversation",
@@ -32,7 +35,8 @@ export function registerGeoSequenceTools(server: McpServer, client: NotraClient)
     ({ projectId, ...body }) => handleError(() => client.createGeoSequence(projectId, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_geo_sequence",
     {
       description: "Update a GEO prompt sequence's name, steps or enabled state",
@@ -42,7 +46,8 @@ export function registerGeoSequenceTools(server: McpServer, client: NotraClient)
     ({ projectId, sequenceId, ...body }) => handleError(() => client.updateGeoSequence(projectId, sequenceId, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_geo_sequence",
     {
       description: "Delete a GEO prompt sequence",
@@ -52,7 +57,8 @@ export function registerGeoSequenceTools(server: McpServer, client: NotraClient)
     ({ projectId, sequenceId }) => handleError(() => client.deleteGeoSequence(projectId, sequenceId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "run_geo_sequence",
     {
       description:

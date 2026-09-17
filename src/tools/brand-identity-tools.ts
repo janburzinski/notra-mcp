@@ -7,12 +7,14 @@ import {
   getBrandIdentityGenerationStatusSchema,
 } from "../schemas/brand-identity.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerBrandIdentityTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_brand_identities",
     {
       description: "List all brand identities configured for your organization",
@@ -22,7 +24,8 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
     () => handleError(() => client.listBrandIdentities()),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_brand_identity",
     {
       description: "Get a single brand identity by its ID, including tone, audience, and language settings",
@@ -32,7 +35,8 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
     ({ brandIdentityId }) => handleError(() => client.getBrandIdentity(brandIdentityId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_brand_identity",
     {
       description: "Update a brand identity's settings including name, tone, audience, language, and more",
@@ -42,7 +46,8 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
     ({ brandIdentityId, ...body }) => handleError(() => client.updateBrandIdentity(brandIdentityId, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_brand_identity",
     {
       description: "Delete a brand identity. Returns any schedules or events that were disabled as a result.",
@@ -52,7 +57,8 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
     ({ brandIdentityId }) => handleError(() => client.deleteBrandIdentity(brandIdentityId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "generate_brand_identity",
     {
       description:
@@ -63,7 +69,8 @@ export function registerBrandIdentityTools(server: McpServer, client: NotraClien
     (params) => handleError(() => client.generateBrandIdentity(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_brand_identity_generation_status",
     {
       description: "Check the status of an async brand identity generation job",

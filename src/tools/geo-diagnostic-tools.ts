@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 import {
@@ -14,7 +15,8 @@ import { loadGeoSnapshot } from "../utils/geo-snapshot.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoDiagnosticTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_snapshot",
     {
       description:
@@ -25,7 +27,8 @@ export function registerGeoDiagnosticTools(server: McpServer, client: NotraClien
     ({ projectId, ...window }) => handleError(() => loadGeoSnapshot(client, projectId, window)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_changes",
     {
       description: "Compare the two latest GEO scans and list gained or lost mentions, positions and citations",
@@ -35,7 +38,8 @@ export function registerGeoDiagnosticTools(server: McpServer, client: NotraClien
     ({ projectId }) => handleError(() => client.getGeoChanges(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_prompt_history",
     {
       description:
@@ -46,7 +50,8 @@ export function registerGeoDiagnosticTools(server: McpServer, client: NotraClien
     ({ projectId, promptId, scanId }) => handleError(() => client.getGeoPromptHistory(projectId, promptId, scanId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_sentiment",
     {
       description: "Get aggregate GEO sentiment, engine breakdowns, timeseries and previous-period comparison",
@@ -56,7 +61,8 @@ export function registerGeoDiagnosticTools(server: McpServer, client: NotraClien
     ({ projectId, ...window }) => handleError(() => client.getGeoSentiment(projectId, window)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_sentiment_analysis",
     {
       description: "Get the stored thematic GEO sentiment analysis without starting a billed analysis run",
@@ -66,7 +72,8 @@ export function registerGeoDiagnosticTools(server: McpServer, client: NotraClien
     ({ projectId, ...window }) => handleError(() => client.getGeoSentimentAnalysis(projectId, window)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_sentiment_evidence",
     {
       description: "List a bounded page of full answers used as sentiment evidence",
@@ -76,7 +83,8 @@ export function registerGeoDiagnosticTools(server: McpServer, client: NotraClien
     ({ projectId, ...params }) => handleError(() => client.listGeoSentimentEvidence(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_shelf_sources",
     {
       description: "List cited and manually tracked GEO shelf sources, including placements and opportunity state",

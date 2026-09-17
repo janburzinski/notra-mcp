@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 import type { NotraClient } from "../notra-client.js";
 import { listWorkspacesInputSchema, whoAmIInputSchema } from "../schemas/workspace.js";
 import type { WorkspaceContextResponse, WhoAmIResponse } from "../types/workspace.js";
@@ -43,7 +44,8 @@ export async function getWhoAmI(client: NotraClient): Promise<WhoAmIResponse> {
 }
 
 export function registerWorkspaceTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "whoami",
     {
       description:
@@ -56,7 +58,8 @@ export function registerWorkspaceTools(server: McpServer, client: NotraClient) {
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "list_workspaces",
     {
       description:

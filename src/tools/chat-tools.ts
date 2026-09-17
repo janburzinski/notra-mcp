@@ -6,12 +6,14 @@ import {
   postChatMessageSchema,
 } from "../schemas/chat.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerChatTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_chats",
     {
       description: "List chat sessions for your organization",
@@ -21,7 +23,8 @@ export function registerChatTools(server: McpServer, client: NotraClient) {
     () => handleError(() => client.listChats()),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_chat",
     {
       description: "Get a single chat session with its messages",
@@ -31,7 +34,8 @@ export function registerChatTools(server: McpServer, client: NotraClient) {
     ({ chatId }) => handleError(() => client.getChat(chatId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_chat_by_external_channel",
     {
       description: "Get a chat session by Discord or Slack external channel ID",
@@ -41,7 +45,8 @@ export function registerChatTools(server: McpServer, client: NotraClient) {
     ({ source, id }) => handleError(() => client.getChatByExternalChannel(source, id)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_chat",
     {
       description: "Start a new chat and return the assistant's reply text with the chat ID when available",
@@ -51,7 +56,8 @@ export function registerChatTools(server: McpServer, client: NotraClient) {
     (params) => handleError(() => client.createChat(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "post_chat_message",
     {
       description: "Post a message to an existing chat and return the assistant's reply text",

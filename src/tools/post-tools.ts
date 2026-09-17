@@ -8,13 +8,15 @@ import {
   getPostGenerationStatusSchema,
 } from "../schemas/post.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerPostTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_posts",
     {
       description:
@@ -25,7 +27,8 @@ export function registerPostTools(server: McpServer, client: NotraClient) {
     (params) => handleError(() => client.listPosts(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_post",
     {
       description: "Get a single post by its ID, including full content in HTML and markdown",
@@ -35,7 +38,8 @@ export function registerPostTools(server: McpServer, client: NotraClient) {
     ({ postId }) => handleError(() => client.getPost(postId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_post",
     {
       description:
@@ -46,7 +50,8 @@ export function registerPostTools(server: McpServer, client: NotraClient) {
     (body) => handleError(() => client.createPost(body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_post",
     {
       description: "Update a post's title, markdown content, or publication status",
@@ -56,7 +61,8 @@ export function registerPostTools(server: McpServer, client: NotraClient) {
     ({ postId, ...body }) => handleError(() => client.updatePost(postId, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_post",
     {
       description: "Delete a post by its ID",
@@ -66,7 +72,8 @@ export function registerPostTools(server: McpServer, client: NotraClient) {
     ({ postId }) => handleError(() => client.deletePost(postId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "generate_post",
     {
       description:
@@ -77,7 +84,8 @@ export function registerPostTools(server: McpServer, client: NotraClient) {
     (params) => handleError(() => client.generatePost(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_post_generation_status",
     {
       description: "Check the status of an async post generation job. Returns job status and event log.",

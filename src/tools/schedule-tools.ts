@@ -5,12 +5,14 @@ import {
   deleteScheduleSchema,
 } from "../schemas/schedule.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerScheduleTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_schedules",
     {
       description: "List scheduled content generation jobs, optionally filtered by repository IDs",
@@ -20,7 +22,8 @@ export function registerScheduleTools(server: McpServer, client: NotraClient) {
     ({ repositoryIds }) => handleError(() => client.listSchedules({ repositoryIds })),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_schedule",
     {
       description: "Create a content generation schedule using a cron-style daily, weekly, or monthly trigger",
@@ -30,7 +33,8 @@ export function registerScheduleTools(server: McpServer, client: NotraClient) {
     (params) => handleError(() => client.createSchedule(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_schedule",
     {
       description: "Update an existing content generation schedule",
@@ -40,7 +44,8 @@ export function registerScheduleTools(server: McpServer, client: NotraClient) {
     ({ scheduleId, ...body }) => handleError(() => client.updateSchedule(scheduleId, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_schedule",
     {
       description: "Delete a content generation schedule by its ID",

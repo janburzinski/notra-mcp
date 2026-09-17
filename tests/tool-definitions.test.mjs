@@ -3,7 +3,7 @@ import * as z from "zod";
 import { McpServer } from "@modelcontextprotocol/server";
 import { TOOLSET_VALUES } from "../src/constants/toolset.ts";
 import { createServer } from "../src/server.ts";
-import { cacheJsonSchema } from "../src/utils/json-schema-cache.ts";
+import { shareJsonSchema } from "../src/utils/json-schema-cache.ts";
 import { parseToolsets } from "../src/utils/toolsets.ts";
 
 function registeredToolNames(options) {
@@ -17,20 +17,28 @@ function registeredToolNames(options) {
 test("JSON Schema conversion runs once per schema and keeps zod validation", () => {
   const schema = z.object({ id: z.string().describe("ID") });
   const convert = vi.spyOn(schema["~standard"].jsonSchema, "input");
-  cacheJsonSchema(schema);
-  cacheJsonSchema(schema);
+  const wrapped = shareJsonSchema(schema);
 
-  const first = schema["~standard"].jsonSchema.input({ target: "draft-2020-12" });
-  const second = schema["~standard"].jsonSchema.input({ target: "draft-2020-12" });
+  // One wrapper per schema; the original schema is never modified.
+  expect(shareJsonSchema(schema)).toBe(wrapped);
+  expect(wrapped).not.toBe(schema);
+
+  const first = wrapped["~standard"].jsonSchema.input({ target: "draft-2020-12" });
+  const second = wrapped["~standard"].jsonSchema.input({ target: "draft-2020-12" });
+  // Callers that omit options (zod defaults them) share the same cache entry.
+  expect(wrapped["~standard"].jsonSchema.input()).toBe(first);
   expect(convert).toHaveBeenCalledTimes(1);
   expect(second).toBe(first);
-  // Callers that omit options (zod defaults them) must not crash the cache key.
-  expect(schema["~standard"].jsonSchema.input().type).toBe("object");
   expect(Object.isFrozen(first.properties.id)).toBe(true);
   expect(first).not.toHaveProperty("$schema");
   expect(first.properties.id).toEqual({ type: "string", description: "ID" });
-  expect(schema["~standard"].validate({ id: "a" })).toEqual({ value: { id: "a" } });
-  expect(schema["~standard"].validate({ id: 1 }).issues).toHaveLength(1);
+  expect(wrapped["~standard"].validate({ id: "a" })).toEqual({ value: { id: "a" } });
+  expect(wrapped["~standard"].validate({ id: 1 }).issues).toHaveLength(1);
+
+  // The untouched original still converts on its own, $schema included.
+  const pristine = schema["~standard"].jsonSchema.input({ target: "draft-2020-12" });
+  expect(pristine).toHaveProperty("$schema");
+  expect(Object.isFrozen(pristine.properties.id)).toBe(false);
 });
 
 test("servers built per request share converted tool schemas", () => {

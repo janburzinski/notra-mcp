@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 import type { NotraClient } from "../notra-client.js";
 import {
   createEventTriggerSchema,
@@ -10,7 +11,8 @@ import {
 import { handleError } from "../utils/mcp.js";
 
 export function registerEventTriggerTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_event_triggers",
     {
       description:
@@ -21,7 +23,8 @@ export function registerEventTriggerTools(server: McpServer, client: NotraClient
     (params) => handleError(() => client.listEventTriggers(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_event_trigger",
     {
       description: "Get a single event trigger by its ID",
@@ -31,7 +34,8 @@ export function registerEventTriggerTools(server: McpServer, client: NotraClient
     ({ triggerId }) => handleError(() => client.getEventTrigger(triggerId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_event_trigger",
     {
       description:
@@ -42,7 +46,8 @@ export function registerEventTriggerTools(server: McpServer, client: NotraClient
     (body) => handleError(() => client.createEventTrigger(body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_event_trigger",
     {
       description:
@@ -55,7 +60,8 @@ export function registerEventTriggerTools(server: McpServer, client: NotraClient
       handleError(() => client.updateEventTrigger(triggerId, { ...body, ...(outputConfig && { outputConfig }) })),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_event_trigger",
     {
       description: "Delete an event trigger",

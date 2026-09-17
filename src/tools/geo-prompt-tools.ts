@@ -5,6 +5,7 @@ import {
   deleteGeoPromptSchema,
 } from "../schemas/geo-prompt.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
@@ -13,7 +14,8 @@ import { toImportSource } from "../utils/import-source.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoPromptTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_prompts",
     {
       description:
@@ -24,7 +26,8 @@ export function registerGeoPromptTools(server: McpServer, client: NotraClient) {
     ({ projectId }) => handleError(() => client.listGeoPrompts(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_geo_prompt",
     {
       description: "Track a new GEO prompt so future scans check it against every configured answer engine",
@@ -34,7 +37,8 @@ export function registerGeoPromptTools(server: McpServer, client: NotraClient) {
     ({ projectId, prompt }) => handleError(() => client.createGeoPrompt(projectId, prompt)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_geo_prompt",
     {
       description: "Enable or disable a tracked GEO prompt",
@@ -44,7 +48,8 @@ export function registerGeoPromptTools(server: McpServer, client: NotraClient) {
     ({ projectId, promptId, enabled }) => handleError(() => client.updateGeoPrompt(projectId, promptId, enabled)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_geo_prompt",
     {
       description: "Stop tracking a GEO prompt",
@@ -54,7 +59,8 @@ export function registerGeoPromptTools(server: McpServer, client: NotraClient) {
     ({ projectId, promptId }) => handleError(() => client.deleteGeoPrompt(projectId, promptId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "import_geo_prompts",
     {
       description:

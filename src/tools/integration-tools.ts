@@ -4,12 +4,14 @@ import {
   deleteIntegrationSchema,
 } from "../schemas/integration.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerIntegrationTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_integrations",
     {
       description: "List all connected integrations (GitHub, Slack, Linear) for your organization",
@@ -19,7 +21,8 @@ export function registerIntegrationTools(server: McpServer, client: NotraClient)
     () => handleError(() => client.listIntegrations()),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_github_integration",
     {
       description: "Connect a GitHub repository as an integration for content generation",
@@ -32,7 +35,8 @@ export function registerIntegrationTools(server: McpServer, client: NotraClient)
       ),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_integration",
     {
       description:

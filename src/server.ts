@@ -25,7 +25,6 @@ import { registerSkillTools } from "./tools/skill-tools.js";
 import { registerWorkspaceTools } from "./tools/workspace-tools.js";
 import type { AuthContext } from "./types/auth.js";
 import type { CreateServerOptions } from "./types/server.js";
-import { useSharedToolBehavior } from "./utils/shared-tool-behavior.js";
 import { parseToolsets } from "./utils/toolsets.js";
 
 export const SERVER_VERSION = "1.1.0";
@@ -41,7 +40,6 @@ export function createServer(auth: string | AuthContext, options: CreateServerOp
     },
     { instructions: SERVER_INSTRUCTIONS },
   );
-  useSharedToolBehavior(server);
 
   if (toolsets.has("content")) {
     registerPostTools(server, client);

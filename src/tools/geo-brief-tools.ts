@@ -6,13 +6,15 @@ import {
   approveGeoContentBriefSchema,
 } from "../schemas/geo-brief.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoBriefTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_content_gaps",
     {
       description:
@@ -23,7 +25,8 @@ export function registerGeoBriefTools(server: McpServer, client: NotraClient) {
     ({ projectId }) => handleError(() => client.listGeoContentGaps(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_content_briefs",
     {
       description: "List a project's GEO content briefs and their statuses",
@@ -33,7 +36,8 @@ export function registerGeoBriefTools(server: McpServer, client: NotraClient) {
     ({ projectId }) => handleError(() => client.listGeoContentBriefs(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "plan_geo_content_brief",
     {
       description:
@@ -44,7 +48,8 @@ export function registerGeoBriefTools(server: McpServer, client: NotraClient) {
     ({ projectId, ...body }) => handleError(() => client.planGeoContentBrief(projectId, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_content_brief",
     {
       description:
@@ -55,7 +60,8 @@ export function registerGeoBriefTools(server: McpServer, client: NotraClient) {
     ({ projectId, briefId }) => handleError(() => client.getGeoContentBrief(projectId, briefId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "approve_geo_content_brief",
     {
       description:

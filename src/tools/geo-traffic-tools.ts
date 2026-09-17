@@ -9,13 +9,15 @@ import {
   rotateGeoIngestTokenSchema,
 } from "../schemas/geo-traffic.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoTrafficTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_traffic_overview",
     {
       description:
@@ -26,7 +28,8 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
     ({ projectId, ...params }) => handleError(() => client.getGeoTrafficOverview(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_traffic_log",
     {
       description:
@@ -37,7 +40,8 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
     ({ projectId, ...params }) => handleError(() => client.getGeoTrafficLog(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_traffic_journeys",
     {
       description:
@@ -48,7 +52,8 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
     ({ projectId, ...params }) => handleError(() => client.listGeoTrafficJourneys(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_traffic_journey",
     {
       description: "Get every event in one AI traffic journey",
@@ -59,7 +64,8 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
       handleError(() => client.getGeoTrafficJourney(projectId, journeyId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "list_geo_traffic_pages",
     {
       description:
@@ -70,7 +76,8 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
     ({ projectId, ...params }) => handleError(() => client.listGeoTrafficPages(projectId, params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_ingest_setup",
     {
       description:
@@ -81,7 +88,8 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
     () => handleError(() => client.getGeoIngestSetup()),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "issue_geo_ingest_token",
     {
       description:
@@ -92,7 +100,8 @@ export function registerGeoTrafficTools(server: McpServer, client: NotraClient) 
     ({ projectId }) => handleError(() => client.issueGeoIngestToken(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "rotate_geo_ingest_token",
     {
       description:

@@ -6,13 +6,15 @@ import {
   deleteProjectSchema,
 } from "../schemas/project.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerProjectTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_projects",
     {
       description: "List the organization's GEO projects. Most GEO tools take a projectId; call this first to find it.",
@@ -22,7 +24,8 @@ export function registerProjectTools(server: McpServer, client: NotraClient) {
     () => handleError(() => client.listProjects()),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "get_project",
     {
       description: "Get a single GEO project by its ID",
@@ -32,7 +35,8 @@ export function registerProjectTools(server: McpServer, client: NotraClient) {
     ({ projectId }) => handleError(() => client.getProject(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "create_project",
     {
       description: "Create a new GEO project, optionally linked to a brand identity",
@@ -42,7 +46,8 @@ export function registerProjectTools(server: McpServer, client: NotraClient) {
     (params) => handleError(() => client.createProject(params)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "update_project",
     {
       description: "Rename a GEO project or relink its brand identity",
@@ -52,7 +57,8 @@ export function registerProjectTools(server: McpServer, client: NotraClient) {
     ({ projectId, ...body }) => handleError(() => client.updateProject(projectId, body)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "delete_project",
     {
       description:

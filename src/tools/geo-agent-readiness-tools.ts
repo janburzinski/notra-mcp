@@ -1,12 +1,14 @@
 import { getGeoAgentReadinessSchema, startGeoAgentReadinessScanSchema } from "../schemas/geo-agent-readiness.js";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoAgentReadinessTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "get_geo_agent_readiness",
     {
       description:
@@ -17,7 +19,8 @@ export function registerGeoAgentReadinessTools(server: McpServer, client: NotraC
     ({ projectId }) => handleError(() => client.getGeoAgentReadiness(projectId)),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     "start_geo_agent_readiness_scan",
     {
       description:

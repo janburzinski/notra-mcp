@@ -2,18 +2,21 @@ import type { StandardSchemaWithJSON } from "@modelcontextprotocol/server";
 import type { JsonSchemaConverter, JsonSchemaOptions } from "../types/json-schema.js";
 import { deepFreeze } from "./deep-freeze.js";
 
-const cachedSchemas = new WeakSet<object>();
+const wrappers = new WeakMap<object, StandardSchemaWithJSON>();
 
 /**
  * The SDK converts a tool's zod schema to JSON Schema on every registration and
  * every `tools/list`, and HTTP builds a server per request. Tool schemas are
- * module-level constants, so convert each one once per process. The result is
- * frozen because every server shares it, and `$schema` is dropped because MCP
- * already defaults tool schemas to draft 2020-12.
+ * module-level constants, so each one gets a single process-wide wrapper whose
+ * conversion result is memoized. The original schema is never modified — the
+ * wrapper delegates validation to it and only intercepts `jsonSchema`. The
+ * converted result is frozen because every server shares it, and `$schema` is
+ * dropped because MCP already defaults tool schemas to draft 2020-12.
  */
-export function cacheJsonSchema<S extends StandardSchemaWithJSON>(schema: S): S {
-  if (cachedSchemas.has(schema)) {
-    return schema;
+export function shareJsonSchema<S extends StandardSchemaWithJSON>(schema: S): S {
+  const existing = wrappers.get(schema);
+  if (existing) {
+    return existing as S;
   }
 
   const standard = schema["~standard"];
@@ -34,11 +37,13 @@ export function cacheJsonSchema<S extends StandardSchemaWithJSON>(schema: S): S 
       return json;
     };
 
-  Object.defineProperty(schema, "~standard", {
-    value: { ...standard, jsonSchema: { input: convert("input"), output: convert("output") } },
-    configurable: true,
-    writable: true,
-  });
-  cachedSchemas.add(schema);
-  return schema;
+  const wrapped: StandardSchemaWithJSON = {
+    "~standard": {
+      ...standard,
+      validate: (data: unknown) => standard.validate(data),
+      jsonSchema: { input: convert("input"), output: convert("output") },
+    },
+  } as StandardSchemaWithJSON;
+  wrappers.set(schema, wrapped);
+  return wrapped as S;
 }

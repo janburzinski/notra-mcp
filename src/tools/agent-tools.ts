@@ -1,10 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/server";
+import { registerTool } from "../utils/register-tool.js";
 import type { NotraClient } from "../notra-client.js";
 import { listAgentChatsSchema } from "../schemas/agent.js";
 import { handleError } from "../utils/mcp.js";
 
 export function registerAgentTools(server: McpServer, client: NotraClient) {
-  server.registerTool(
+  registerTool(
+    server,
     "list_agent_chats",
     {
       description:
