@@ -9,102 +9,94 @@ import {
   listGeoPromptResultSummariesSchema,
 } from "../schemas/geo-visibility.js";
 import type { McpServer } from "@modelcontextprotocol/server";
-import { registerTool } from "../utils/register-tool.js";
+import { shareJsonSchema } from "../utils/json-schema-cache.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoVisibilityTools(server: McpServer, client: NotraClient) {
-  registerTool(
-    server,
+  server.registerTool(
     "get_geo_visibility_overview",
     {
       description:
         "Get GEO mention rates per answer engine: checks, mentions and average position for every engine the project tracks",
       annotations: { title: "Get GEO Visibility Overview", readOnlyHint: true },
-      inputSchema: getGeoVisibilityOverviewSchema,
+      inputSchema: shareJsonSchema(getGeoVisibilityOverviewSchema),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityOverview(projectId, params)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "get_geo_visibility_timeseries",
     {
       description: "Get daily GEO mention counts per answer engine, one point per day and engine",
       annotations: { title: "Get GEO Visibility Timeseries", readOnlyHint: true },
-      inputSchema: getGeoVisibilityTimeseriesSchema,
+      inputSchema: shareJsonSchema(getGeoVisibilityTimeseriesSchema),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityTimeseries(projectId, params)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "get_geo_prompt_results",
     {
       description:
         "Get every latest stored answer per tracked prompt and engine. This can be large; prefer list_geo_prompt_result_summaries and targeted detail.",
       annotations: { title: "Get GEO Prompt Results", readOnlyHint: true },
-      inputSchema: getGeoPromptResultsSchema,
+      inputSchema: shareJsonSchema(getGeoPromptResultsSchema),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityPromptResults(projectId, params)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "list_geo_prompt_result_summaries",
     {
       description:
         "List filtered, paginated GEO prompt results without full answer text or sources. Use checkId with get_geo_prompt_result_detail.",
       annotations: { title: "List GEO Prompt Result Summaries", readOnlyHint: true },
-      inputSchema: listGeoPromptResultSummariesSchema,
+      inputSchema: shareJsonSchema(listGeoPromptResultSummariesSchema),
     },
     ({ projectId, ...params }) => handleError(() => client.listGeoPromptResultSummaries(projectId, params)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "get_geo_prompt_result_detail",
     {
       description: "Get the full answer, grounding sources and token metadata for one GEO check",
       annotations: { title: "Get GEO Prompt Result Detail", readOnlyHint: true },
-      inputSchema: getGeoPromptResultDetailSchema,
+      inputSchema: shareJsonSchema(getGeoPromptResultDetailSchema),
     },
     ({ projectId, checkId }) => handleError(() => client.getGeoPromptResultDetail(projectId, checkId)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "get_geo_competitor_share",
     {
       description:
         "Get GEO share of voice across tracked brands: mention counts per brand with per-brand trends and the daily timeseries behind them",
       annotations: { title: "Get GEO Competitor Share", readOnlyHint: true },
-      inputSchema: getGeoCompetitorShareSchema,
+      inputSchema: shareJsonSchema(getGeoCompetitorShareSchema),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityCompetitorShare(projectId, params)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "get_geo_language_share",
     {
       description: "Get GEO mention rates broken down by tracked language",
       annotations: { title: "Get GEO Language Share", readOnlyHint: true },
-      inputSchema: getGeoLanguageShareSchema,
+      inputSchema: shareJsonSchema(getGeoLanguageShareSchema),
     },
     ({ projectId, ...params }) => handleError(() => client.getGeoVisibilityLanguageShare(projectId, params)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "get_geo_competitor_detail",
     {
       description:
         "Get one competitor's GEO mention history: daily mentions and the prompts that produced them. Use the brand names reported by get_geo_competitor_share.",
       annotations: { title: "Get GEO Competitor Detail", readOnlyHint: true },
-      inputSchema: getGeoCompetitorDetailSchema,
+      inputSchema: shareJsonSchema(getGeoCompetitorDetailSchema),
     },
     ({ projectId, brand, ...params }) =>
       handleError(() => client.getGeoVisibilityCompetitorDetail(projectId, brand, params)),

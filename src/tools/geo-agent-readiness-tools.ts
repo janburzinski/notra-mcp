@@ -1,32 +1,30 @@
 import { getGeoAgentReadinessSchema, startGeoAgentReadinessScanSchema } from "../schemas/geo-agent-readiness.js";
 import type { McpServer } from "@modelcontextprotocol/server";
-import { registerTool } from "../utils/register-tool.js";
+import { shareJsonSchema } from "../utils/json-schema-cache.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerGeoAgentReadinessTools(server: McpServer, client: NotraClient) {
-  registerTool(
-    server,
+  server.registerTool(
     "get_geo_agent_readiness",
     {
       description:
         "Get the latest agent readiness report for the project's website: score, failed/partial checks with recommendations, any scan still in flight, and the score history. Never starts a scan.",
       annotations: { title: "Get Agent Readiness", readOnlyHint: true },
-      inputSchema: getGeoAgentReadinessSchema,
+      inputSchema: shareJsonSchema(getGeoAgentReadinessSchema),
     },
     ({ projectId }) => handleError(() => client.getGeoAgentReadiness(projectId)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "start_geo_agent_readiness_scan",
     {
       description:
         "Queue an agent readiness scan of the project's website. A scan already running against the same URL is reused (alreadyRunning is true). Poll get_geo_agent_readiness for the result. Requires the agent readiness feature for the organization.",
       annotations: { title: "Start Agent Readiness Scan", destructiveHint: false },
-      inputSchema: startGeoAgentReadinessScanSchema,
+      inputSchema: shareJsonSchema(startGeoAgentReadinessScanSchema),
     },
     ({ projectId }) => handleError(() => client.startGeoAgentReadinessScan(projectId)),
   );

@@ -76,7 +76,7 @@ afterEach(() => {
 });
 
 function response() {
-  const res = { headersSent: false, setHeader: vi.fn() };
+  const res = { headersSent: false, setHeader: vi.fn(), on: vi.fn() };
   res.status = vi.fn(() => res);
   res.json = vi.fn(() => res);
   res.send = vi.fn(() => res);

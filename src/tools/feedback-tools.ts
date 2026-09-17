@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/server";
-import { registerTool } from "../utils/register-tool.js";
+import { shareJsonSchema } from "../utils/json-schema-cache.js";
 import {
   buildFeedbackToolDescription,
   createFeedbackToolHandler,
@@ -22,8 +22,7 @@ import { handleError } from "../utils/mcp.js";
 export function registerFeedbackTools(server: McpServer, options: FeedbackToolOptions) {
   const handle = createFeedbackToolHandler(options);
 
-  registerTool(
-    server,
+  server.registerTool(
     options.toolName ?? "submit_feedback",
     {
       description: options.description ?? buildFeedbackToolDescription(options.productName),
@@ -34,7 +33,7 @@ export function registerFeedbackTools(server: McpServer, options: FeedbackToolOp
         idempotentHint: false,
         openWorldHint: true,
       },
-      inputSchema: submitFeedbackSchema,
+      inputSchema: shareJsonSchema(submitFeedbackSchema),
     },
     // Spread into a fresh object: the SDK's CallToolResult carries an index signature that
     // the package's FeedbackToolResult interface lacks.
@@ -43,36 +42,33 @@ export function registerFeedbackTools(server: McpServer, options: FeedbackToolOp
 }
 
 export function registerFeedbackInboxTools(server: McpServer, client: NotraClient) {
-  registerTool(
-    server,
+  server.registerTool(
     "list_feedback",
     {
       description:
         "List feedback your organization received through its feedback URL, MCP servers or SDKs, filtered by triage status, kind or project",
       annotations: { title: "List Feedback", readOnlyHint: true },
-      inputSchema: listFeedbackSchema,
+      inputSchema: shareJsonSchema(listFeedbackSchema),
     },
     (params) => handleError(() => client.listFeedback(params)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "get_feedback",
     {
       description: "Get a single feedback entry with its full message, agent metadata and context URL",
       annotations: { title: "Get Feedback", readOnlyHint: true },
-      inputSchema: getFeedbackSchema,
+      inputSchema: shareJsonSchema(getFeedbackSchema),
     },
     ({ feedbackId }) => handleError(() => client.getFeedback(feedbackId)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "update_feedback",
     {
       description: "Set the triage status of a feedback entry: new, triaged, resolved or archived",
       annotations: { title: "Update Feedback", destructiveHint: false, idempotentHint: true },
-      inputSchema: updateFeedbackSchema,
+      inputSchema: shareJsonSchema(updateFeedbackSchema),
     },
     ({ feedbackId, status }) => handleError(() => client.updateFeedback(feedbackId, { status })),
   );

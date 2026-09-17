@@ -6,65 +6,60 @@ import {
   deleteProjectSchema,
 } from "../schemas/project.js";
 import type { McpServer } from "@modelcontextprotocol/server";
-import { registerTool } from "../utils/register-tool.js";
+import { shareJsonSchema } from "../utils/json-schema-cache.js";
 
 import type { NotraClient } from "../notra-client.js";
 
 import { handleError } from "../utils/mcp.js";
 
 export function registerProjectTools(server: McpServer, client: NotraClient) {
-  registerTool(
-    server,
+  server.registerTool(
     "list_projects",
     {
       description: "List the organization's GEO projects. Most GEO tools take a projectId; call this first to find it.",
       annotations: { title: "List Projects", readOnlyHint: true },
-      inputSchema: listProjectsSchema,
+      inputSchema: shareJsonSchema(listProjectsSchema),
     },
     () => handleError(() => client.listProjects()),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "get_project",
     {
       description: "Get a single GEO project by its ID",
       annotations: { title: "Get Project", readOnlyHint: true },
-      inputSchema: getProjectSchema,
+      inputSchema: shareJsonSchema(getProjectSchema),
     },
     ({ projectId }) => handleError(() => client.getProject(projectId)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "create_project",
     {
       description: "Create a new GEO project, optionally linked to a brand identity",
       annotations: { title: "Create Project", destructiveHint: false },
-      inputSchema: createProjectSchema,
+      inputSchema: shareJsonSchema(createProjectSchema),
     },
     (params) => handleError(() => client.createProject(params)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "update_project",
     {
       description: "Rename a GEO project or relink its brand identity",
       annotations: { title: "Update Project", destructiveHint: true, idempotentHint: true },
-      inputSchema: updateProjectSchema,
+      inputSchema: shareJsonSchema(updateProjectSchema),
     },
     ({ projectId, ...body }) => handleError(() => client.updateProject(projectId, body)),
   );
 
-  registerTool(
-    server,
+  server.registerTool(
     "delete_project",
     {
       description:
         "Delete a GEO project and its settings, prompts, sequences, competitors, scans, checks, and reports. This cannot be undone. The organization's last project cannot be deleted.",
       annotations: { title: "Delete Project", destructiveHint: true, idempotentHint: true },
-      inputSchema: deleteProjectSchema,
+      inputSchema: shareJsonSchema(deleteProjectSchema),
     },
     ({ projectId }) => handleError(() => client.deleteProject(projectId)),
   );

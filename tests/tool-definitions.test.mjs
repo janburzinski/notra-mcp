@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { TOOLSET_VALUES } from "../src/constants/toolset.ts";
 import { createServer } from "../src/server.ts";
 import { shareJsonSchema } from "../src/utils/json-schema-cache.ts";
+import { runWithRequestSignal } from "../src/utils/request-signal.ts";
 import { parseToolsets } from "../src/utils/toolsets.ts";
 
 function registeredToolNames(options) {
@@ -51,7 +52,7 @@ test("servers built per request share converted tool schemas", () => {
   }
 });
 
-test("tool handlers expose the MCP request signal to Notra API calls", async () => {
+test("tool handlers expose the ambient request signal to Notra API calls", async () => {
   const handlers = new Map();
   vi.spyOn(McpServer.prototype, "registerTool").mockImplementation((name, _config, handler) => {
     handlers.set(name, handler);
@@ -63,7 +64,7 @@ test("tool handlers expose the MCP request signal to Notra API calls", async () 
   });
   createServer("key");
   const controller = new AbortController();
-  await handlers.get("list_projects")({}, { mcpReq: { signal: controller.signal } });
+  await runWithRequestSignal(controller.signal, () => handlers.get("list_projects")({}));
   expect(signals[0].aborted).toBe(false);
   controller.abort();
   expect(signals[0].aborted).toBe(true);

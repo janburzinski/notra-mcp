@@ -21,6 +21,7 @@ import type { Toolset } from "./types/toolset.js";
 import { authenticateBearerToken, parseBearerToken } from "./utils/auth.js";
 import { readPositiveIntEnv } from "./utils/env.js";
 import { getMcpResourceUrl, getOAuthConfig, getProtectedResourceMetadata } from "./utils/oauth-config.js";
+import { runWithRequestSignal } from "./utils/request-signal.js";
 import { parseToolsets } from "./utils/toolsets.js";
 
 const app = createMcpExpressApp({ host: "0.0.0.0", jsonLimit: String(MCP_JSON_BODY_LIMIT_BYTES) });
@@ -305,7 +306,19 @@ app.post("/register", (_req, res) => {
   res.status(404).end();
 });
 
-app.post("/mcp", async (req, res) => {
+app.post("/mcp", (req, res) => {
+  // A client that goes away before the response completes (tab closed, fetch
+  // aborted, connection dropped) must cancel the in-flight tool work upstream.
+  // The signal rides AsyncLocalStorage so tool handlers and the Notra API
+  // client pick it up without threading it through every call.
+  const disconnect = new AbortController();
+  res.on("close", () => {
+    if (!res.writableFinished) disconnect.abort();
+  });
+  return runWithRequestSignal(disconnect.signal, () => handleMcpPost(req, res));
+});
+
+async function handleMcpPost(req: Request, res: Response) {
   try {
     const webRequest = await toWebRequest(req, req.body);
     if (!(await isLegacyRequest(webRequest, req.body))) {
@@ -390,7 +403,7 @@ app.post("/mcp", async (req, res) => {
       });
     }
   }
-});
+}
 
 app.get("/mcp", async (req, res) => {
   const session = await getAuthenticatedSession(req);
