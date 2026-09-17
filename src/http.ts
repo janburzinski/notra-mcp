@@ -7,7 +7,9 @@ import { createMcpHandler, isInitializeRequest, isLegacyRequest, type AuthInfo }
 import type { NextFunction, Request, Response } from "express";
 import {
   DEFAULT_MAX_SESSIONS,
+  DEFAULT_MAX_SESSIONS_PER_PRINCIPAL,
   MCP_JSON_BODY_LIMIT_BYTES,
+  SESSION_RETRY_AFTER_SECONDS,
   SESSION_SWEEP_INTERVAL_MS,
   SESSION_TTL_MS,
 } from "./constants/http.js";
@@ -17,14 +19,18 @@ import type { AuthContext } from "./types/auth.js";
 import type { BodyParserError, Session } from "./types/http.js";
 import type { Toolset } from "./types/toolset.js";
 import { authenticateBearerToken, parseBearerToken } from "./utils/auth.js";
+import { readPositiveIntEnv } from "./utils/env.js";
 import { getMcpResourceUrl, getOAuthConfig, getProtectedResourceMetadata } from "./utils/oauth-config.js";
 import { parseToolsets } from "./utils/toolsets.js";
 
 const app = createMcpExpressApp({ host: "0.0.0.0", jsonLimit: String(MCP_JSON_BODY_LIMIT_BYTES) });
 
 const SESSION_TOKEN_DIGEST_KEY = randomBytes(32);
-const configuredMaxSessions = Number.parseInt(process.env.NOTRA_MCP_MAX_SESSIONS ?? "", 10);
-const MAX_SESSIONS = configuredMaxSessions > 0 ? configuredMaxSessions : DEFAULT_MAX_SESSIONS;
+const MAX_SESSIONS = readPositiveIntEnv("NOTRA_MCP_MAX_SESSIONS", DEFAULT_MAX_SESSIONS);
+const MAX_SESSIONS_PER_PRINCIPAL = readPositiveIntEnv(
+  "NOTRA_MCP_MAX_SESSIONS_PER_PRINCIPAL",
+  DEFAULT_MAX_SESSIONS_PER_PRINCIPAL,
+);
 const oauthConfig = getOAuthConfig();
 
 const modernHandler = createMcpHandler(
@@ -106,12 +112,24 @@ function closeSession(sessionId: string, session: Session) {
   });
 }
 
-function addSession(sessionId: string, session: Session) {
-  while (sessions.size >= MAX_SESSIONS) {
-    const [oldestId, oldest] = sessions.entries().next().value!;
-    closeSession(oldestId, oldest);
+function sessionPrincipal(auth: AuthContext, tokenDigest: Buffer): string {
+  return auth.kind === "oauth"
+    ? `oauth:${auth.organizationId}:${auth.userId}`
+    : `apiKey:${tokenDigest.toString("hex")}`;
+}
+
+/**
+ * Makes room for a new session. A principal at its quota loses its own least
+ * recently used session; sessions of other principals are never evicted, so
+ * a caller cannot close someone else's connection by opening many sessions.
+ * Returns false when the server is full of other principals' sessions.
+ */
+function reserveSessionSlot(principal: string): boolean {
+  const own = [...sessions].filter(([, session]) => session.principal === principal);
+  for (const [sessionId, session] of own.slice(0, Math.max(0, own.length - MAX_SESSIONS_PER_PRINCIPAL + 1))) {
+    closeSession(sessionId, session);
   }
-  sessions.set(sessionId, session);
+  return sessions.size < MAX_SESSIONS;
 }
 
 function setBearerChallenge(res: Response, error?: string, description?: string) {
@@ -182,11 +200,14 @@ function fromMcpAuthInfo(authInfo: AuthInfo): AuthContext {
   return { kind: "apiKey", token: authInfo.token };
 }
 
-/** Reads `?toolsets=content,geo`, falling back to `NOTRA_MCP_TOOLSETS`. */
+/** Reads `?toolsets=content,geo` (or repeated keys), falling back to `NOTRA_MCP_TOOLSETS`. */
 function requestToolsets(req: Request, res: Response): ReadonlySet<Toolset> | undefined {
   const query = req.query?.toolsets;
   try {
-    return parseToolsets(typeof query === "string" ? query : process.env.NOTRA_MCP_TOOLSETS);
+    if (query !== undefined && typeof query !== "string" && !Array.isArray(query)) {
+      throw new Error("Invalid toolsets query parameter");
+    }
+    return parseToolsets(query === undefined ? process.env.NOTRA_MCP_TOOLSETS : [query].flat().join(","));
   } catch (error) {
     res.status(400).json({
       jsonrpc: "2.0",
@@ -320,12 +341,22 @@ app.post("/mcp", async (req, res) => {
       }
 
       const tokenDigest = digestToken(auth.token);
+      const principal = sessionPrincipal(auth, tokenDigest);
+      if (!reserveSessionSlot(principal)) {
+        res.setHeader("Retry-After", String(SESSION_RETRY_AFTER_SECONDS));
+        res.status(503).json({
+          jsonrpc: "2.0",
+          error: { code: -32000, message: "Too many active sessions, try again later" },
+          id: null,
+        });
+        return;
+      }
       const server = createServer(auth, { toolsets });
 
       transport = new NodeStreamableHTTPServerTransport({
         sessionIdGenerator: randomUUID,
         onsessioninitialized: (id: string) => {
-          addSession(id, { transport, tokenDigest, auth, lastSeen: Date.now() });
+          sessions.set(id, { transport, tokenDigest, auth, principal, lastSeen: Date.now() });
         },
       });
 

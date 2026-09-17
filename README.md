@@ -109,7 +109,7 @@ The issuer is `https://{WORKOS_AUTHKIT_DOMAIN}` and must match the `iss` claim i
 
 When `NODE_ENV=development`, the default AuthKit domain is `essential-berry-67-development-2.authkit.app`; production defaults to `oauth.usenotra.com`. `auth.usenotra.com` is the WorkOS Authentication API domain and serves none of the OAuth endpoints, so it does not work here.
 
-Legacy 2025 sessions expire after 30 minutes of inactivity. `NOTRA_MCP_MAX_SESSIONS` (default `1000`) caps open sessions; the least recently used session closes first.
+Legacy 2025 sessions expire after 30 minutes of inactivity. Each OAuth user or API key can hold `NOTRA_MCP_MAX_SESSIONS_PER_PRINCIPAL` sessions (default `50`); beyond that, its own least recently used session closes. When the server holds `NOTRA_MCP_MAX_SESSIONS` sessions (default `1000`), new sessions are rejected with HTTP 503 and `Retry-After` instead of closing other users' sessions.
 
 ## Toolsets
 

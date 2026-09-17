@@ -64,6 +64,7 @@ beforeEach(async () => {
     state.tools.set(name, handler);
   });
   vi.stubEnv("NOTRA_MCP_MAX_SESSIONS", "3");
+  vi.stubEnv("NOTRA_MCP_MAX_SESSIONS_PER_PRINCIPAL", "2");
   ({ authenticateBearerToken } = await import("../src/utils/auth.ts"));
   authenticateBearerToken.mockReset();
   await import("../src/http.ts");
@@ -82,15 +83,13 @@ function response() {
   return res;
 }
 
-async function initializeSession({ query = {} } = {}) {
-  authenticateBearerToken.mockResolvedValueOnce({
-    kind: "oauth",
-    token: "original",
-    userId: "user-1",
-    organizationId: "org-1",
-    scopes: ["posts.read"],
-  });
-  const before = state.transports.length;
+function oauthIdentity(userId = "user-1") {
+  return { kind: "oauth", token: "original", userId, organizationId: "org-1", scopes: ["posts.read"] };
+}
+
+async function postInitialize({ query = {}, userId } = {}) {
+  authenticateBearerToken.mockResolvedValueOnce(oauthIdentity(userId));
+  const res = response();
   await state.routes.get("POST /mcp")(
     {
       headers: { authorization: "Bearer original" },
@@ -102,13 +101,22 @@ async function initializeSession({ query = {} } = {}) {
         params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } },
       },
     },
-    response(),
+    res,
   );
+  return res;
+}
+
+async function initializeSession(options) {
+  const before = state.transports.length;
+  await postInitialize(options);
   expect(state.transports).toHaveLength(before + 1);
-  return state.transports[before];
+  const transport = state.transports[before];
+  transport.userId = options?.userId ?? "user-1";
+  return transport;
 }
 
 async function sessionStatus(transport) {
+  authenticateBearerToken.mockResolvedValueOnce(oauthIdentity(transport.userId));
   const res = response();
   await state.routes.get("GET /mcp")(
     { headers: { authorization: "Bearer original", "mcp-session-id": transport.sessionId } },
@@ -245,7 +253,7 @@ test("oversized and malformed bodies are answered as JSON-RPC errors", () => {
   expect(tooLarge.status).toHaveBeenCalledWith(413);
   expect(tooLarge.json).toHaveBeenCalledWith({
     jsonrpc: "2.0",
-    error: { code: -32600, message: "Request body exceeds the 2 MB limit" },
+    error: { code: -32600, message: "Request body exceeds the 4 MB limit" },
     id: null,
   });
   const malformed = response();
@@ -260,26 +268,38 @@ test("oversized and malformed bodies are answered as JSON-RPC errors", () => {
   expect(next).toHaveBeenCalledWith(unexpected);
 });
 
-test("session count is capped and evicts the least recently used session", async () => {
+test("a principal at its session quota evicts only its own least recently used session", async () => {
   const first = await initializeSession();
   const second = await initializeSession();
-  const third = await initializeSession();
-  authenticateBearerToken.mockResolvedValue({
-    kind: "oauth",
-    token: "original",
-    userId: "user-1",
-    organizationId: "org-1",
-    scopes: ["posts.read"],
-  });
   // Touch the oldest session so the second one becomes least recently used.
   expect(await sessionStatus(first)).toBe(200);
-  const fourth = await initializeSession();
+  const third = await initializeSession();
   expect(second.close).toHaveBeenCalledTimes(1);
   expect(await sessionStatus(second)).toBe(401);
-  for (const transport of [first, third, fourth]) {
+  for (const transport of [first, third]) {
     expect(transport.close).not.toHaveBeenCalled();
     expect(await sessionStatus(transport)).toBe(200);
   }
+});
+
+test("a full server rejects new sessions instead of evicting other principals", async () => {
+  const victims = [await initializeSession(), await initializeSession(), await initializeSession({ userId: "user-2" })];
+  const transports = state.transports.length;
+  const rejected = await postInitialize({ userId: "attacker" });
+  expect(rejected.status).toHaveBeenCalledWith(503);
+  expect(rejected.setHeader).toHaveBeenCalledWith("Retry-After", "60");
+  expect(rejected.json.mock.calls[0][0].error.message).toBe("Too many active sessions, try again later");
+  expect(state.transports).toHaveLength(transports);
+  for (const transport of victims) {
+    expect(transport.close).not.toHaveBeenCalled();
+    expect(await sessionStatus(transport)).toBe(200);
+  }
+
+  // A principal at its own quota can still rotate its sessions on a full server.
+  const rotated = await initializeSession();
+  expect(victims[0].close).toHaveBeenCalledTimes(1);
+  expect(await sessionStatus(rotated)).toBe(200);
+  expect(await sessionStatus(victims[2])).toBe(200);
 });
 
 test("idle sessions are closed by a sweep that runs every minute", async () => {
@@ -310,6 +330,15 @@ test("unknown toolsets are rejected before a session is created", async () => {
   expect(state.transports).toHaveLength(0);
 });
 
+test("repeated toolsets query keys are combined and validated", async () => {
+  await initializeSession({ query: { toolsets: ["content", "geo"] } });
+  expect(state.tools.has("list_posts")).toBe(true);
+  expect(state.tools.has("get_geo_snapshot")).toBe(true);
+  const invalid = await postInitialize({ query: { toolsets: ["geo", "nope"] } });
+  expect(invalid.status).toHaveBeenCalledWith(400);
+  expect(invalid.json.mock.calls[0][0].error.message).toMatch(/Unknown toolset: nope/);
+});
+
 test("legacy sessions only register the requested toolsets", async () => {
   await initializeSession({ query: { toolsets: "content" } });
   expect(state.tools.has("list_posts")).toBe(true);
@@ -318,22 +347,27 @@ test("legacy sessions only register the requested toolsets", async () => {
   expect(state.tools.has("whoami")).toBe(true);
 });
 
-test.each(["-1", "0", "abc"])("invalid NOTRA_MCP_MAX_SESSIONS=%s falls back to the default cap", async (value) => {
+async function reloadHttp(env) {
   vi.resetModules();
   state.routes.clear();
   state.middleware.length = 0;
-  vi.stubEnv("NOTRA_MCP_MAX_SESSIONS", value);
+  for (const [name, value] of Object.entries(env)) vi.stubEnv(name, value);
   ({ authenticateBearerToken } = await import("../src/utils/auth.ts"));
   await import("../src/http.ts");
+}
+
+test("sessions below the principal quota are never evicted", async () => {
+  await reloadHttp({ NOTRA_MCP_MAX_SESSIONS: "10", NOTRA_MCP_MAX_SESSIONS_PER_PRINCIPAL: "4" });
+  const sessions = [await initializeSession(), await initializeSession(), await initializeSession()];
+  for (const transport of sessions) {
+    expect(transport.close).not.toHaveBeenCalled();
+  }
+});
+
+test.each(["-1", "0", "abc"])("invalid session caps (%s) fall back to the defaults", async (value) => {
+  await reloadHttp({ NOTRA_MCP_MAX_SESSIONS: value, NOTRA_MCP_MAX_SESSIONS_PER_PRINCIPAL: value });
   const sessions = [];
   for (let i = 0; i < 5; i++) sessions.push(await initializeSession());
-  authenticateBearerToken.mockResolvedValue({
-    kind: "oauth",
-    token: "original",
-    userId: "user-1",
-    organizationId: "org-1",
-    scopes: ["posts.read"],
-  });
   for (const transport of sessions) {
     expect(transport.close).not.toHaveBeenCalled();
     expect(await sessionStatus(transport)).toBe(200);

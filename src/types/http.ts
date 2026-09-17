@@ -5,6 +5,8 @@ export type Session = {
   transport: NodeStreamableHTTPServerTransport;
   tokenDigest: Buffer;
   auth: AuthContext;
+  /** Who owns the session: an OAuth user in an organization, or an API key digest. */
+  principal: string;
   lastSeen: number;
 };
 

@@ -127,11 +127,22 @@ test("a 1 MB CSV import reaches the API and oversized bodies get a JSON-RPC erro
 
   const tooLarge = await modern("tools/call", {
     name: "import_geo_prompts",
-    arguments: { projectId: "p1", csv: csv.repeat(3) },
+    arguments: { projectId: "p1", csv: csv.repeat(4) },
   });
   expect(tooLarge.status).toBe(413);
   expect(tooLarge.contentType).toMatch(/application\/json/);
-  expect(tooLarge.body.error).toEqual({ code: -32600, message: "Request body exceeds the 2 MB limit" });
+  expect(tooLarge.body.error).toEqual({ code: -32600, message: "Request body exceeds the 4 MB limit" });
+});
+
+test("a CSV at the character limit fits even when every character takes 3 bytes", async () => {
+  const { GEO_CSV_IMPORT_MAX_LENGTH } = await import("../src/constants/geo.ts");
+  const csv = "prompt\n" + "最".repeat(GEO_CSV_IMPORT_MAX_LENGTH - 7);
+  expect(csv.length).toBe(GEO_CSV_IMPORT_MAX_LENGTH);
+  expect(Buffer.byteLength(csv)).toBeGreaterThan(3_000_000);
+  const result = await modern("tools/call", { name: "import_geo_prompts", arguments: { projectId: "p1", csv } });
+  expect(result.status).toBe(200);
+  expect(result.body.result.isError).toBeUndefined();
+  expect(state.upstream.requests.at(-1).bytes).toBeGreaterThan(3_000_000);
 });
 
 test("an MCP client disconnect cancels the in-flight chat request upstream", async () => {
