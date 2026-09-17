@@ -285,6 +285,28 @@ test("a principal at its session quota evicts only its own least recently used s
   }
 });
 
+test("a failed initialization never evicts the principal's existing sessions", async () => {
+  const first = await initializeSession();
+  const second = await initializeSession();
+  // The principal is at its quota, but the replacement fails to connect, so
+  // both existing sessions must survive untouched.
+  vi.mocked(McpServer.prototype.connect).mockRejectedValueOnce(new Error("connect failed"));
+  const rejected = await postInitialize();
+  expect(rejected.status).toHaveBeenCalledWith(500);
+  for (const transport of [first, second]) {
+    expect(transport.close).not.toHaveBeenCalled();
+    expect(await sessionStatus(transport)).toBe(200);
+  }
+  // The next successful initialization still rotates out the LRU session.
+  const third = await initializeSession();
+  expect(first.close).toHaveBeenCalledTimes(1);
+  expect(await sessionStatus(first)).toBe(401);
+  for (const transport of [second, third]) {
+    expect(transport.close).not.toHaveBeenCalled();
+    expect(await sessionStatus(transport)).toBe(200);
+  }
+});
+
 test("a full server rejects new sessions instead of evicting other principals", async () => {
   const victims = [await initializeSession(), await initializeSession(), await initializeSession({ userId: "user-2" })];
   const transports = state.transports.length;

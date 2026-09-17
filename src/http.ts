@@ -133,17 +133,35 @@ function sessionPrincipal(auth: AuthContext, tokenDigest: Buffer): string {
 }
 
 /**
- * Makes room for a new session. A principal at its quota loses its own least
- * recently used session; sessions of other principals are never evicted, so
- * a caller cannot close someone else's connection by opening many sessions.
- * Returns false when the server is full of other principals' sessions.
+ * Whether a new session for the principal can be admitted. A principal at its
+ * quota makes room by giving up its own least recently used session; sessions
+ * of other principals are never evicted, so a caller cannot close someone
+ * else's connection by opening many sessions. Returns false when the server
+ * is full of other principals' sessions. Admission is side-effect free; the
+ * actual eviction happens in `evictForSessionQuota`.
  */
-function reserveSessionSlot(principal: string): boolean {
+function hasSessionSlot(principal: string): boolean {
+  let own = 0;
+  for (const session of sessions.values()) {
+    if (session.principal === principal) {
+      own += 1;
+    }
+  }
+  const evictable = Math.max(0, own - MAX_SESSIONS_PER_PRINCIPAL + 1);
+  return sessions.size - evictable < MAX_SESSIONS;
+}
+
+/**
+ * Closes the principal's least recently used sessions beyond its quota to
+ * make room for one more. Runs only once the replacement session has been
+ * initialized, so a failed server creation or connection — or a client that
+ * disconnects mid-initialize — never costs the caller an existing session.
+ */
+function evictForSessionQuota(principal: string) {
   const own = [...sessions].filter(([, session]) => session.principal === principal);
   for (const [sessionId, session] of own.slice(0, Math.max(0, own.length - MAX_SESSIONS_PER_PRINCIPAL + 1))) {
     closeSession(sessionId, session);
   }
-  return sessions.size < MAX_SESSIONS;
 }
 
 function setBearerChallenge(res: Response, error?: string, description?: string) {
@@ -368,7 +386,7 @@ async function handleMcpPost(req: Request, res: Response) {
 
       const tokenDigest = digestToken(auth.token);
       const principal = sessionPrincipal(auth, tokenDigest);
-      if (!reserveSessionSlot(principal)) {
+      if (!hasSessionSlot(principal)) {
         res.setHeader("Retry-After", String(SESSION_RETRY_AFTER_SECONDS));
         res.status(503).json({
           jsonrpc: "2.0",
@@ -382,6 +400,7 @@ async function handleMcpPost(req: Request, res: Response) {
       transport = new NodeStreamableHTTPServerTransport({
         sessionIdGenerator: randomUUID,
         onsessioninitialized: (id: string) => {
+          evictForSessionQuota(principal);
           sessions.set(id, { transport, tokenDigest, auth, principal, lastSeen: Date.now() });
         },
       });
