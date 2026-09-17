@@ -327,6 +327,28 @@ test("a full server rejects new sessions instead of evicting other principals", 
   expect(await sessionStatus(victims[2])).toBe(200);
 });
 
+test("an initialize that loses the global-cap race is closed instead of exceeding the cap", async () => {
+  const first = await initializeSession();
+  const second = await initializeSession();
+  // A user-2 initialize passes admission with one free slot, but user-3 takes
+  // that slot while user-2's server is still connecting.
+  vi.mocked(McpServer.prototype.connect).mockImplementationOnce(async () => {
+    await initializeSession({ userId: "user-3" });
+  });
+  const before = state.transports.length;
+  await postInitialize({ userId: "user-2" });
+  const raced = state.transports[before];
+  // The raced session is closed instead of stored; the cap holds.
+  expect(raced.close).toHaveBeenCalledTimes(1);
+  for (const transport of [first, second, state.transports[before + 1]]) {
+    expect(transport === raced).toBe(false);
+    expect(await sessionStatus(transport)).toBe(200);
+  }
+  // A retry is now rejected cleanly at admission.
+  const retry = await postInitialize({ userId: "user-2" });
+  expect(retry.status).toHaveBeenCalledWith(503);
+});
+
 test("idle sessions are closed by a sweep that runs every minute", async () => {
   const transport = await initializeSession();
   vi.setSystemTime(Date.now() + 30 * 60 * 1000 + 1);

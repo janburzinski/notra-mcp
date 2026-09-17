@@ -138,7 +138,9 @@ function sessionPrincipal(auth: AuthContext, tokenDigest: Buffer): string {
  * of other principals are never evicted, so a caller cannot close someone
  * else's connection by opening many sessions. Returns false when the server
  * is full of other principals' sessions. Admission is side-effect free; the
- * actual eviction happens in `evictForSessionQuota`.
+ * actual eviction happens in `evictForSessionQuota`. Because concurrent
+ * initializations can all pass this check before any of them is stored, it is
+ * re-checked in `onsessioninitialized` before the session is committed.
  */
 function hasSessionSlot(principal: string): boolean {
   let own = 0;
@@ -400,8 +402,16 @@ async function handleMcpPost(req: Request, res: Response) {
       transport = new NodeStreamableHTTPServerTransport({
         sessionIdGenerator: randomUUID,
         onsessioninitialized: (id: string) => {
+          const session = { transport, tokenDigest, auth, principal, lastSeen: Date.now() };
+          // A concurrent burst can fill the server between admission and
+          // now. Close the fresh transport instead of exceeding the cap; the
+          // client's re-initialize then gets a clean 503 at admission.
+          if (!hasSessionSlot(principal)) {
+            closeSession(id, session);
+            return;
+          }
           evictForSessionQuota(principal);
-          sessions.set(id, { transport, tokenDigest, auth, principal, lastSeen: Date.now() });
+          sessions.set(id, session);
         },
       });
 
