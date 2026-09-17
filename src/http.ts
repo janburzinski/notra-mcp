@@ -84,14 +84,14 @@ async function getAuthenticatedSession(req: Request) {
         nextAuth.userId !== session.auth.userId ||
         nextAuth.organizationId !== session.auth.organizationId
       ) {
-        sessions.delete(sessionId);
+        closeSession(sessionId, session);
         return undefined;
       }
       // The session's client shares this object and must see refreshed credentials.
       Object.assign(session.auth, nextAuth);
       session.tokenDigest = digestToken(token);
     } catch {
-      sessions.delete(sessionId);
+      closeSession(sessionId, session);
       return undefined;
     }
   } else if (token && !timingSafeEqual(digestToken(token), session.tokenDigest)) {

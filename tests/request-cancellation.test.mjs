@@ -106,12 +106,32 @@ test.each(["JSON", "chat"])("MCP request cancellation disconnects the upstream %
   const request = runWithRequestSignal(controller.signal, () =>
     operation === "JSON" ? client.listPosts() : client.createChat({ message: "Hello" }),
   );
-  const rejected = expect(request).rejects.toThrow();
+  const rejected = expect(request).rejects.toThrow("Notra API request was cancelled");
   await requestReceived;
   controller.abort();
   await rejected;
   await vi.waitFor(() => expect(disconnects).toHaveLength(1));
   expect(disconnects[0]).toBeLessThan(1_000);
+});
+
+test("cancellation while reading the body is reported as cancelled, not as a parse error", async () => {
+  let received;
+  const requestReceived = new Promise((resolve) => {
+    received = resolve;
+  });
+  const baseUrl = await listen((_req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.flushHeaders();
+    res.write('{"posts":'); // Partial body; never completed.
+    received();
+  });
+  const client = new NotraClient("test-token", baseUrl);
+  const controller = new AbortController();
+  const request = runWithRequestSignal(controller.signal, () => client.listPosts());
+  const rejected = expect(request).rejects.toThrow("Notra API request was cancelled");
+  await requestReceived;
+  controller.abort();
+  await rejected;
 });
 
 test("snapshot aborts optional sections when the overview fails", async () => {

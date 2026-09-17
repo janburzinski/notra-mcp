@@ -24,6 +24,8 @@ test("JSON Schema conversion runs once per schema and keeps zod validation", () 
   const second = schema["~standard"].jsonSchema.input({ target: "draft-2020-12" });
   expect(convert).toHaveBeenCalledTimes(1);
   expect(second).toBe(first);
+  // Callers that omit options (zod defaults them) must not crash the cache key.
+  expect(schema["~standard"].jsonSchema.input().type).toBe("object");
   expect(Object.isFrozen(first.properties.id)).toBe(true);
   expect(first).not.toHaveProperty("$schema");
   expect(first.properties.id).toEqual({ type: "string", description: "ID" });

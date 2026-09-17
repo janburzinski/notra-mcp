@@ -149,6 +149,17 @@ function asTimeoutError(error: unknown, timeoutMs: number): Error | undefined {
   return undefined;
 }
 
+/**
+ * Maps an abort (MCP client disconnect or caller cancellation) to a readable
+ * error, so cancelled calls are not misreported as HTTP or parse failures.
+ */
+function asCancellationError(error: unknown): Error | undefined {
+  if (error instanceof Error && error.name === "AbortError") {
+    return new Error("Notra API request was cancelled");
+  }
+  return undefined;
+}
+
 export class NotraClient {
   private auth: AuthContext;
   private baseUrl: string;
@@ -181,7 +192,7 @@ export class NotraClient {
     try {
       response = await fetch(url.toString(), fetchOptions);
     } catch (error) {
-      throw asTimeoutError(error, timeoutMs) ?? error;
+      throw asTimeoutError(error, timeoutMs) ?? asCancellationError(error) ?? error;
     }
 
     let data: unknown;
@@ -191,6 +202,10 @@ export class NotraClient {
       const timeout = asTimeoutError(error, timeoutMs);
       if (timeout) {
         throw timeout;
+      }
+      const cancelled = asCancellationError(error);
+      if (cancelled) {
+        throw cancelled;
       }
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -234,14 +249,14 @@ export class NotraClient {
     try {
       response = await fetch(url.toString(), fetchOptions);
     } catch (error) {
-      throw asTimeoutError(error, timeoutMs) ?? error;
+      throw asTimeoutError(error, timeoutMs) ?? asCancellationError(error) ?? error;
     }
 
     let text: string;
     try {
       text = await response.text();
     } catch (error) {
-      throw asTimeoutError(error, timeoutMs) ?? error;
+      throw asTimeoutError(error, timeoutMs) ?? asCancellationError(error) ?? error;
     }
 
     if (!response.ok) {

@@ -20,11 +20,14 @@ export function cacheJsonSchema<S extends StandardSchemaWithJSON>(schema: S): S 
   const converted = new Map<string, Record<string, unknown>>();
   const convert =
     (io: keyof JsonSchemaConverter) =>
-    (options: JsonSchemaOptions): Record<string, unknown> => {
-      const key = `${io}:${options.target}`;
+    (options?: JsonSchemaOptions): Record<string, unknown> => {
+      // zod defaults a missing target to draft 2020-12; normalize so both call
+      // shapes share one cache entry (the SDK always asks for 2020-12 anyway).
+      const resolved = options ?? { target: "draft-2020-12" };
+      const key = `${io}:${resolved.target}`;
       let json = converted.get(key);
       if (!json) {
-        const { $schema: _, ...rest } = standard.jsonSchema[io](options);
+        const { $schema: _, ...rest } = standard.jsonSchema[io](resolved);
         json = deepFreeze(rest);
         converted.set(key, json);
       }

@@ -170,6 +170,8 @@ test.each([{ userId: "other-user" }, { organizationId: "other-org" }, { kind: "a
     );
     expect(res.status).toHaveBeenCalledWith(401);
     expect(transport.handleRequest).toHaveBeenCalledTimes(1);
+    // Invalidation must close the transport, not just drop it from the map.
+    expect(transport.close).toHaveBeenCalled();
     const retry = response();
     await state.routes.get("GET /mcp")({ headers: { "mcp-session-id": transport.sessionId } }, retry);
     expect(retry.status).toHaveBeenCalledWith(401);
@@ -185,6 +187,7 @@ test("failed token verification invalidates the session", async () => {
     res,
   );
   expect(res.status).toHaveBeenCalledWith(401);
+  expect(transport.close).toHaveBeenCalled();
   const retry = response();
   await state.routes.get("GET /mcp")({ headers: { "mcp-session-id": transport.sessionId } }, retry);
   expect(retry.status).toHaveBeenCalledWith(401);
