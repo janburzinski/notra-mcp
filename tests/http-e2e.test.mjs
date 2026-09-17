@@ -145,6 +145,15 @@ test("a CSV at the character limit fits even when every character takes 3 bytes"
   expect(state.upstream.requests.at(-1).bytes).toBeGreaterThan(3_000_000);
 });
 
+test("an unknown tool on the modern path gets a clean not-found without touching upstream", async () => {
+  const before = state.upstream.requests.length;
+  const { status, body } = await modern("tools/call", { name: "does_not_exist", arguments: {} });
+  expect(status).toBe(200);
+  expect(body.error?.code).toBe(-32602);
+  expect(body.error?.message).toContain("Tool does_not_exist not found");
+  expect(state.upstream.requests.length).toBe(before);
+});
+
 test("an MCP client disconnect cancels the in-flight chat request upstream", async () => {
   const controller = new AbortController();
   const call = modern(

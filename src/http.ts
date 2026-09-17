@@ -35,11 +35,24 @@ const MAX_SESSIONS_PER_PRINCIPAL = readPositiveIntEnv(
 const oauthConfig = getOAuthConfig();
 
 const modernHandler = createMcpHandler(
-  ({ authInfo }) => {
+  ({ authInfo, requestInfo }) => {
     if (!authInfo) {
       throw new Error("Authenticated MCP request is missing auth context");
     }
-    return createServer(fromMcpAuthInfo(authInfo), { toolsets: authInfo.extra?.toolsets as ReadonlySet<Toolset> });
+    // Modern requests are single-message and stateless: a tools/call server
+    // only needs the module owning the called tool. Mcp-Method/Mcp-Name are
+    // required headers on this era and the SDK rejects header/body mismatches
+    // before the factory runs, so the headers can be trusted. All of our tool
+    // names are ASCII and never use the base64 sentinel encoding; an encoded
+    // (or unknown) name simply misses the lookup and gets full registration.
+    let onlyTool: string | undefined;
+    if (requestInfo?.headers.get("mcp-method") === "tools/call") {
+      onlyTool = requestInfo.headers.get("mcp-name") ?? undefined;
+    }
+    return createServer(fromMcpAuthInfo(authInfo), {
+      toolsets: authInfo.extra?.toolsets as ReadonlySet<Toolset>,
+      onlyTool,
+    });
   },
   {
     legacy: "reject",

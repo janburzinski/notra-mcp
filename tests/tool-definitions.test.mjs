@@ -86,6 +86,37 @@ test("toolsets default to everything and filter registered tools", () => {
   expect(geo.filter((name) => content.includes(name)).sort()).toEqual(["list_workspaces", "submit_feedback", "whoami"]);
 });
 
+test("onlyTool registers just the owning module, with full registration as fallback", () => {
+  // Every registered tool stays reachable through its owning module — guards
+  // drift between the probe-learned owner map and the real registrars.
+  const all = registeredToolNames();
+  for (const name of all) {
+    expect(registeredToolNames({ onlyTool: name })).toContain(name);
+  }
+
+  // Module granularity: a post tool comes with the other post tools only.
+  const postOnly = registeredToolNames({ onlyTool: "list_posts" });
+  expect(postOnly).toEqual([
+    "list_posts",
+    "get_post",
+    "create_post",
+    "update_post",
+    "delete_post",
+    "generate_post",
+    "get_post_generation_status",
+  ]);
+
+  // Unknown names fall back to full registration so the SDK keeps answering
+  // its standard not-found error.
+  expect(registeredToolNames({ onlyTool: "does_not_exist" })).toHaveLength(97);
+
+  // A tool outside the active toolsets falls back too, so the filtered server
+  // still answers not-found instead of accidentally registering it.
+  const contentOnly = registeredToolNames({ toolsets: parseToolsets("content"), onlyTool: "list_projects" });
+  expect(contentOnly).not.toContain("list_projects");
+  expect(contentOnly).toContain("list_posts");
+});
+
 test("NOTRA_MCP_TOOLSETS configures stdio servers", () => {
   vi.stubEnv("NOTRA_MCP_TOOLSETS", "geo");
   expect(registeredToolNames()).not.toContain("list_posts");
