@@ -1,5 +1,5 @@
 import "zod/compile";
-import { McpServer } from "@modelcontextprotocol/server";
+import { McpServer, type StandardSchemaWithJSON } from "@modelcontextprotocol/server";
 import { SERVER_INSTRUCTIONS } from "./constants/server.js";
 import { NotraClient } from "./notra-client.js";
 import { registerAgentTools } from "./tools/agent-tools.js";
@@ -24,11 +24,56 @@ import { registerScheduleTools } from "./tools/schedule-tools.js";
 import { registerSkillTools } from "./tools/skill-tools.js";
 import { registerWorkspaceTools } from "./tools/workspace-tools.js";
 import type { AuthContext } from "./types/auth.js";
+import type { Toolset } from "./types/toolset.js";
+import { cacheJsonSchema } from "./utils/json-schema-cache.js";
+import { runWithRequestSignal } from "./utils/request-signal.js";
+import { parseToolsets } from "./utils/toolsets.js";
 
 export const SERVER_VERSION = "1.1.0";
 
-export function createServer(auth: string | AuthContext): McpServer {
+type ToolConfig = {
+  inputSchema?: StandardSchemaWithJSON;
+  outputSchema?: StandardSchemaWithJSON;
+  [key: string]: unknown;
+};
+type ToolHandler = (...args: unknown[]) => unknown;
+
+/**
+ * Applies process-wide behavior to every tool: JSON Schemas are converted once
+ * instead of per server, and Notra API calls inherit the MCP request's
+ * cancellation signal.
+ */
+function useSharedToolBehavior(server: McpServer) {
+  const registerTool = server.registerTool.bind(server) as (
+    name: string,
+    config: ToolConfig,
+    handler: ToolHandler,
+  ) => ReturnType<McpServer["registerTool"]>;
+
+  server.registerTool = ((name: string, config: ToolConfig, handler: ToolHandler) =>
+    registerTool(
+      name,
+      {
+        ...config,
+        ...(config.inputSchema && { inputSchema: cacheJsonSchema(config.inputSchema) }),
+        ...(config.outputSchema && { outputSchema: cacheJsonSchema(config.outputSchema) }),
+      },
+      (...args: unknown[]) => {
+        // Handlers receive (args, ctx), or only (ctx) when a tool has no input schema.
+        const ctx = args.at(-1) as { mcpReq?: { signal?: AbortSignal } } | undefined;
+        return runWithRequestSignal(ctx?.mcpReq?.signal, () => handler(...args));
+      },
+    )) as McpServer["registerTool"];
+}
+
+export type CreateServerOptions = {
+  /** Tool groups to expose. Defaults to `NOTRA_MCP_TOOLSETS`, or every toolset. */
+  toolsets?: ReadonlySet<Toolset>;
+};
+
+export function createServer(auth: string | AuthContext, options: CreateServerOptions = {}): McpServer {
   const client = new NotraClient(auth);
+  const toolsets = options.toolsets ?? parseToolsets(process.env.NOTRA_MCP_TOOLSETS);
 
   const server = new McpServer(
     {
@@ -37,28 +82,33 @@ export function createServer(auth: string | AuthContext): McpServer {
     },
     { instructions: SERVER_INSTRUCTIONS },
   );
+  useSharedToolBehavior(server);
 
-  registerPostTools(server, client);
-  registerBrandIdentityTools(server, client);
-  registerIntegrationTools(server, client);
-  registerScheduleTools(server, client);
-  registerEventTriggerTools(server, client);
-  registerChatTools(server, client);
-  registerAgentTools(server, client);
-  registerSkillTools(server, client);
-  registerFeedbackInboxTools(server, client);
-  registerProjectTools(server, client);
+  if (toolsets.has("content")) {
+    registerPostTools(server, client);
+    registerBrandIdentityTools(server, client);
+    registerIntegrationTools(server, client);
+    registerScheduleTools(server, client);
+    registerEventTriggerTools(server, client);
+    registerChatTools(server, client);
+    registerAgentTools(server, client);
+    registerSkillTools(server, client);
+    registerFeedbackInboxTools(server, client);
+  }
+  if (toolsets.has("geo")) {
+    registerProjectTools(server, client);
+    registerGeoSettingsTools(server, client);
+    registerGeoPromptTools(server, client);
+    registerGeoSequenceTools(server, client);
+    registerGeoCompetitorTools(server, client);
+    registerGeoDiagnosticTools(server, client);
+    registerGeoScanTools(server, client);
+    registerGeoVisibilityTools(server, client);
+    registerGeoBriefTools(server, client);
+    registerGeoAgentReadinessTools(server, client);
+    registerGeoTrafficTools(server, client);
+  }
   registerWorkspaceTools(server, client);
-  registerGeoSettingsTools(server, client);
-  registerGeoPromptTools(server, client);
-  registerGeoSequenceTools(server, client);
-  registerGeoCompetitorTools(server, client);
-  registerGeoDiagnosticTools(server, client);
-  registerGeoScanTools(server, client);
-  registerGeoVisibilityTools(server, client);
-  registerGeoBriefTools(server, client);
-  registerGeoAgentReadinessTools(server, client);
-  registerGeoTrafficTools(server, client);
   registerFeedbackTools(server, {
     url: "https://api.usenotra.com/v1/feedback/notra",
     productName: "Notra",

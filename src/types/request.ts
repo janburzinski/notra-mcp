@@ -1,5 +1,6 @@
 export interface RequestTimeoutOptions {
   timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 export interface RequestOptions<

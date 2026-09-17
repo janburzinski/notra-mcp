@@ -4,17 +4,25 @@ import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import { createMcpExpressApp } from "@modelcontextprotocol/express";
 import { NodeStreamableHTTPServerTransport, toNodeHandler, toWebRequest } from "@modelcontextprotocol/node";
 import { createMcpHandler, isInitializeRequest, isLegacyRequest, type AuthInfo } from "@modelcontextprotocol/server";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
+import {
+  DEFAULT_MAX_SESSIONS,
+  MCP_JSON_BODY_LIMIT_BYTES,
+  SESSION_SWEEP_INTERVAL_MS,
+  SESSION_TTL_MS,
+} from "./constants/http.js";
 import { OAUTH_AUTHORIZATION_SERVER_METADATA_PATH, OAUTH_PROTECTED_RESOURCE_METADATA_PATH } from "./constants/oauth.js";
 import { createServer } from "./server.js";
 import type { AuthContext } from "./types/auth.js";
+import type { Toolset } from "./types/toolset.js";
 import { authenticateBearerToken, parseBearerToken } from "./utils/auth.js";
 import { getMcpResourceUrl, getOAuthConfig, getProtectedResourceMetadata } from "./utils/oauth-config.js";
+import { parseToolsets } from "./utils/toolsets.js";
 
-const app = createMcpExpressApp({ host: "0.0.0.0" });
+const app = createMcpExpressApp({ host: "0.0.0.0", jsonLimit: String(MCP_JSON_BODY_LIMIT_BYTES) });
 
-const SESSION_TTL_MS = 30 * 60 * 1000;
 const SESSION_TOKEN_DIGEST_KEY = randomBytes(32);
+const MAX_SESSIONS = Number.parseInt(process.env.NOTRA_MCP_MAX_SESSIONS ?? "", 10) || DEFAULT_MAX_SESSIONS;
 const oauthConfig = getOAuthConfig();
 
 const modernHandler = createMcpHandler(
@@ -22,7 +30,7 @@ const modernHandler = createMcpHandler(
     if (!authInfo) {
       throw new Error("Authenticated MCP request is missing auth context");
     }
-    return createServer(authInfo.token);
+    return createServer(fromMcpAuthInfo(authInfo), { toolsets: authInfo.extra?.toolsets as ReadonlySet<Toolset> });
   },
   {
     legacy: "reject",
@@ -59,7 +67,7 @@ async function getAuthenticatedSession(req: Request) {
   }
 
   if (Date.now() - session.lastSeen > SESSION_TTL_MS) {
-    sessions.delete(sessionId);
+    closeSession(sessionId, session);
     return undefined;
   }
 
@@ -90,7 +98,25 @@ async function getAuthenticatedSession(req: Request) {
   }
 
   session.lastSeen = Date.now();
+  // Map order doubles as LRU order: move the session to the most recent end.
+  sessions.delete(sessionId);
+  sessions.set(sessionId, session);
   return session;
+}
+
+function closeSession(sessionId: string, session: Session) {
+  sessions.delete(sessionId);
+  session.transport.close().catch((error: unknown) => {
+    console.error("Error closing MCP session:", error);
+  });
+}
+
+function addSession(sessionId: string, session: Session) {
+  while (sessions.size >= MAX_SESSIONS) {
+    const [oldestId, oldest] = sessions.entries().next().value!;
+    closeSession(oldestId, oldest);
+  }
+  sessions.set(sessionId, session);
 }
 
 function setBearerChallenge(res: Response, error?: string, description?: string) {
@@ -122,7 +148,7 @@ function sendUnauthorizedText(res: Response, description = "Unauthorized") {
   res.status(401).send("Unauthorized");
 }
 
-function toMcpAuthInfo(auth: AuthContext): AuthInfo {
+function toMcpAuthInfo(auth: AuthContext, toolsets: ReadonlySet<Toolset>): AuthInfo {
   if (auth.kind === "oauth") {
     return {
       token: auth.token,
@@ -133,6 +159,7 @@ function toMcpAuthInfo(auth: AuthContext): AuthInfo {
         kind: auth.kind,
         userId: auth.userId,
         organizationId: auth.organizationId,
+        toolsets,
       },
     };
   }
@@ -142,8 +169,37 @@ function toMcpAuthInfo(auth: AuthContext): AuthInfo {
     clientId: "notra-api-key",
     scopes: ["*"],
     resource: new URL(oauthConfig.resource),
-    extra: { kind: auth.kind },
+    extra: { kind: auth.kind, toolsets },
   };
+}
+
+function fromMcpAuthInfo(authInfo: AuthInfo): AuthContext {
+  const extra = authInfo.extra ?? {};
+  if (extra.kind === "oauth") {
+    return {
+      kind: "oauth",
+      token: authInfo.token,
+      userId: String(extra.userId),
+      organizationId: String(extra.organizationId),
+      scopes: authInfo.scopes,
+    };
+  }
+  return { kind: "apiKey", token: authInfo.token };
+}
+
+/** Reads `?toolsets=content,geo`, falling back to `NOTRA_MCP_TOOLSETS`. */
+function requestToolsets(req: Request, res: Response): ReadonlySet<Toolset> | undefined {
+  const query = req.query?.toolsets;
+  try {
+    return parseToolsets(typeof query === "string" ? query : process.env.NOTRA_MCP_TOOLSETS);
+  } catch (error) {
+    res.status(400).json({
+      jsonrpc: "2.0",
+      error: { code: -32602, message: error instanceof Error ? error.message : "Invalid toolsets" },
+      id: null,
+    });
+    return undefined;
+  }
 }
 
 async function authenticateRequest(req: Request, res: Response): Promise<AuthContext | undefined> {
@@ -162,8 +218,8 @@ async function authenticateRequest(req: Request, res: Response): Promise<AuthCon
   }
 }
 
-async function handleModernRequest(req: Request, res: Response, auth: AuthContext) {
-  const authInfo = toMcpAuthInfo(auth);
+async function handleModernRequest(req: Request, res: Response, auth: AuthContext, toolsets: ReadonlySet<Toolset>) {
+  const authInfo = toMcpAuthInfo(auth, toolsets);
   const nodeHandler = toNodeHandler({
     fetch: (request, options) => modernHandler.fetch(request, { ...options, authInfo }),
   });
@@ -174,10 +230,10 @@ setInterval(() => {
   const now = Date.now();
   for (const [sessionId, session] of sessions.entries()) {
     if (now - session.lastSeen > SESSION_TTL_MS) {
-      sessions.delete(sessionId);
+      closeSession(sessionId, session);
     }
   }
-}, SESSION_TTL_MS).unref();
+}, SESSION_SWEEP_INTERVAL_MS).unref();
 
 let authServerMetadataCache: { metadata: unknown; expiresAt: number } | undefined;
 
@@ -237,9 +293,13 @@ app.post("/mcp", async (req, res) => {
   try {
     const webRequest = await toWebRequest(req, req.body);
     if (!(await isLegacyRequest(webRequest, req.body))) {
+      const toolsets = requestToolsets(req, res);
+      if (!toolsets) {
+        return;
+      }
       const auth = await authenticateRequest(req, res);
       if (auth) {
-        await handleModernRequest(req, res, auth);
+        await handleModernRequest(req, res, auth, toolsets);
       }
       return;
     }
@@ -255,18 +315,22 @@ app.post("/mcp", async (req, res) => {
       }
       transport = session.transport;
     } else if (isInitializeRequest(req.body)) {
+      const toolsets = requestToolsets(req, res);
+      if (!toolsets) {
+        return;
+      }
       const auth = await authenticateRequest(req, res);
       if (!auth) {
         return;
       }
 
       const tokenDigest = digestToken(auth.token);
-      const server = createServer(auth);
+      const server = createServer(auth, { toolsets });
 
       transport = new NodeStreamableHTTPServerTransport({
         sessionIdGenerator: randomUUID,
         onsessioninitialized: (id: string) => {
-          sessions.set(id, { transport, tokenDigest, auth, lastSeen: Date.now() });
+          addSession(id, { transport, tokenDigest, auth, lastSeen: Date.now() });
         },
       });
 
@@ -329,6 +393,26 @@ app.delete("/mcp", async (req, res) => {
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+// Body parser failures (oversized or malformed JSON) would otherwise be answered
+// with Express's HTML error page, which MCP clients cannot surface.
+app.use((error: { status?: number; type?: string }, _req: Request, res: Response, next: NextFunction) => {
+  if (res.headersSent || !error.status || error.status >= 500) {
+    next(error);
+    return;
+  }
+  const tooLarge = error.type === "entity.too.large";
+  res.status(error.status).json({
+    jsonrpc: "2.0",
+    error: {
+      code: tooLarge ? -32600 : -32700,
+      message: tooLarge
+        ? `Request body exceeds the ${MCP_JSON_BODY_LIMIT_BYTES / (1024 * 1024)} MB limit`
+        : "Parse error: invalid JSON",
+    },
+    id: null,
+  });
 });
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
