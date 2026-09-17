@@ -50,7 +50,9 @@ export function registerEventTriggerTools(server: McpServer, client: NotraClient
       annotations: { title: "Update Event Trigger", destructiveHint: true, idempotentHint: true },
       inputSchema: updateEventTriggerSchema,
     },
-    ({ triggerId, ...body }) => handleError(() => client.updateEventTrigger(triggerId, body)),
+    // The API rejects outputConfig: null, which get_event_trigger returns for triggers without one.
+    ({ triggerId, outputConfig, ...body }) =>
+      handleError(() => client.updateEventTrigger(triggerId, { ...body, ...(outputConfig && { outputConfig }) })),
   );
 
   server.registerTool(

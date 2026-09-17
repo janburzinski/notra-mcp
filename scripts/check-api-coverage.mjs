@@ -5,9 +5,10 @@
  * Run `npm run build` first. The script instantiates the built `NotraClient`
  * against a recording `fetch`, calls every public method with placeholder
  * arguments, and collects the `METHOD /path` pairs it produces. Those are
- * matched against the spec and against `client.<method>(` references in
- * `src/tools` and `src/utils`, so a route only counts as covered when a
- * registered tool can actually reach it.
+ * matched against the spec and against `client.<method>(` references made by
+ * tools that `createServer()` really registers, either directly or through
+ * helper functions those tools call. Unregistered tool modules and unused
+ * helpers never count as coverage.
  *
  * Exit code 1 when a spec route has no tool, or when the client calls a route
  * the spec does not know (unless listed in PENDING_API_ROUTES).
@@ -15,16 +16,23 @@
  * Environment:
  *   NOTRA_OPENAPI_URL   spec URL (default: `${NOTRA_API_BASE}/openapi.json`)
  *   NOTRA_OPENAPI_FILE  read the spec from a local file instead of fetching it
+ *
+ * The production spec is fetched on purpose: the check exists to catch API routes
+ * that shipped without a matching tool. Transient failures are retried.
  */
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { McpServer } from "@modelcontextprotocol/server";
 import { NotraClient } from "../build/notra-client.js";
+import { createServer } from "../build/server.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PLACEHOLDER = "__P__";
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete"];
 const CLIENT_INTERNALS = new Set(["constructor", "request", "requestText", "geoPath"]);
+const SPEC_FETCH_ATTEMPTS = 3;
+const SPEC_FETCH_RETRY_DELAY_MS = 2_000;
 
 /** Spec routes deliberately not exposed as MCP tools. */
 const EXCLUDED_SPEC_ROUTES = {
@@ -57,11 +65,29 @@ async function loadSpec() {
   }
   const base = process.env.NOTRA_API_BASE ?? "https://api.usenotra.com";
   const url = process.env.NOTRA_OPENAPI_URL ?? `${base}/openapi.json`;
-  const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`);
+  for (let attempt = 1; ; attempt++) {
+    let response;
+    try {
+      response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    } catch (error) {
+      if (attempt === SPEC_FETCH_ATTEMPTS) throw error;
+      await waitBeforeRetry(attempt, error instanceof Error ? error.message : String(error));
+      continue;
+    }
+    if (response.ok) {
+      return response.json();
+    }
+    const message = `Failed to fetch ${url}: HTTP ${response.status}`;
+    // Client errors other than rate limiting will not recover on retry.
+    const retryable = response.status >= 500 || response.status === 429;
+    if (!retryable || attempt === SPEC_FETCH_ATTEMPTS) throw new Error(message);
+    await waitBeforeRetry(attempt, message);
   }
-  return response.json();
+}
+
+async function waitBeforeRetry(attempt, reason) {
+  console.error(`${reason}; retrying (${attempt}/${SPEC_FETCH_ATTEMPTS - 1})`);
+  await new Promise((resolve) => setTimeout(resolve, SPEC_FETCH_RETRY_DELAY_MS * attempt));
 }
 
 function listSpecRoutes(spec) {
@@ -135,25 +161,72 @@ async function collectSourceFiles(dir) {
   return files.flat();
 }
 
-/** Maps each `client.<method>` reference to the tool names (or util files) that use it. */
-async function mapMethodsToTools() {
-  const usage = new Map();
-  const add = (method, user) => {
-    if (!usage.has(method)) usage.set(method, new Set());
-    usage.get(method).add(user);
+/** Tool names the built server registers at runtime. */
+function listRegisteredTools() {
+  delete process.env.NOTRA_MCP_TOOLSETS;
+  const names = new Set();
+  const registerTool = McpServer.prototype.registerTool;
+  McpServer.prototype.registerTool = function (name, ...rest) {
+    names.add(name);
+    return registerTool.call(this, name, ...rest);
   };
+  try {
+    createServer("coverage-token");
+  } finally {
+    McpServer.prototype.registerTool = registerTool;
+  }
+  return names;
+}
 
-  for (const file of await collectSourceFiles(path.join(ROOT, "src", "tools"))) {
-    const source = await readFile(file, "utf8");
-    const blocks = source.split(/registerTool\(\s*"/).slice(1);
-    for (const block of blocks) {
-      const toolName = block.slice(0, block.indexOf('"'));
-      for (const match of block.matchAll(/client\.(\w+)\(/g)) add(match[1], toolName);
+/** Splits a source file into top-level function declarations. */
+function splitTopLevelFunctions(source) {
+  const starts = [...source.matchAll(/^(?:export\s+)?(?:async\s+)?function\s+(\w+)/gm)];
+  return starts.map((match, index) => ({
+    name: match[1],
+    body: source.slice(match.index, starts[index + 1]?.index ?? source.length),
+  }));
+}
+
+/** Maps each `client.<method>` reference to the registered tools that can reach it. */
+async function mapMethodsToTools(registeredTools) {
+  const helpers = new Map();
+  const toolBlocks = [];
+  const files = [
+    ...(await collectSourceFiles(path.join(ROOT, "src", "tools"))),
+    ...(await collectSourceFiles(path.join(ROOT, "src", "utils"))),
+  ];
+  for (const file of files) {
+    for (const fn of splitTopLevelFunctions(await readFile(file, "utf8"))) {
+      const blocks = fn.body.split(/registerTool\(\s*"/).slice(1);
+      if (blocks.length === 0) {
+        if (!helpers.has(fn.name)) helpers.set(fn.name, []);
+        helpers.get(fn.name).push(fn.body);
+      }
+      for (const block of blocks) {
+        toolBlocks.push({ toolName: block.slice(0, block.indexOf('"')), source: block });
+      }
     }
   }
-  for (const file of await collectSourceFiles(path.join(ROOT, "src", "utils"))) {
-    const source = await readFile(file, "utf8");
-    for (const match of source.matchAll(/client\.(\w+)\(/g)) add(match[1], `utils/${path.basename(file)}`);
+
+  const usage = new Map();
+  for (const { toolName, source } of toolBlocks) {
+    if (!registeredTools.has(toolName)) continue;
+    // Follow helper calls transitively so indirect client calls count, but only for this tool.
+    const reachable = [source];
+    const visited = new Set();
+    for (let i = 0; i < reachable.length; i++) {
+      for (const [name, bodies] of helpers) {
+        if (visited.has(name) || !new RegExp(`\\b${name}\\(`).test(reachable[i])) continue;
+        visited.add(name);
+        reachable.push(...bodies);
+      }
+    }
+    for (const text of reachable) {
+      for (const match of text.matchAll(/client\.(\w+)\(/g)) {
+        if (!usage.has(match[1])) usage.set(match[1], new Set());
+        usage.get(match[1]).add(toolName);
+      }
+    }
   }
   return usage;
 }
@@ -167,7 +240,8 @@ function printGroup(title, rows) {
 async function main() {
   // Load the spec before recordClientRoutes swaps out globalThis.fetch.
   const spec = await loadSpec();
-  const [{ recorded, methods }, usage] = await Promise.all([recordClientRoutes(), mapMethodsToTools()]);
+  const usage = await mapMethodsToTools(listRegisteredTools());
+  const { recorded, methods } = await recordClientRoutes();
   const specRoutes = listSpecRoutes(spec);
 
   const covered = [];
@@ -208,7 +282,7 @@ async function main() {
   printGroup("Spec routes without an MCP tool", missingTool);
   printGroup("Spec routes reached by NotraClient but not by any tool", clientOnly);
   printGroup("NotraClient routes unknown to the spec", unknownRoutes);
-  printGroup("NotraClient methods no tool or util references", unusedMethods);
+  printGroup("NotraClient methods no registered tool reaches", unusedMethods);
   printGroup("PENDING_API_ROUTES entries now in the spec, remove them", stalePending);
   printGroup("EXCLUDED_SPEC_ROUTES entries that already have a tool, remove them", excludedButCovered);
 

@@ -16,7 +16,10 @@ export const eventTriggerBodyShape = {
         .array(z.enum(EVENT_TRIGGER_EVENT_TYPE_VALUES))
         .min(1)
         .describe("GitHub events that fire the trigger"),
-      includePreReleases: z.boolean().optional().describe("Also fire on pre-releases (release events only)"),
+      includePreReleases: z
+        .boolean()
+        .optional()
+        .describe("Also fire on pre-releases (release events only, default true)"),
       ignoreCommitPatterns: z
         .array(z.string().min(1))
         .optional()
@@ -55,5 +58,19 @@ export const listEventTriggersSchema = z.object({
 
 export const getEventTriggerSchema = z.object({ triggerId: triggerIdSchema });
 export const createEventTriggerSchema = z.object(eventTriggerBodyShape);
-export const updateEventTriggerSchema = z.object({ triggerId: triggerIdSchema, ...eventTriggerBodyShape });
+// PATCH replaces the whole trigger and applies defaults to omitted fields, so fields
+// with defaults are required here. get_event_trigger returns outputConfig: null for
+// triggers without one; accept it so the read result can be sent back unchanged.
+export const updateEventTriggerSchema = z.object({
+  triggerId: triggerIdSchema,
+  ...eventTriggerBodyShape,
+  outputConfig: eventTriggerBodyShape.outputConfig
+    .unwrap()
+    .nullable()
+    .optional()
+    .describe("How generated content is styled and published; null or omitted means none"),
+  autoPublish: z
+    .boolean()
+    .describe("Publish generated content immediately instead of saving a draft. Send the current value back."),
+});
 export const deleteEventTriggerSchema = z.object({ triggerId: triggerIdSchema });
