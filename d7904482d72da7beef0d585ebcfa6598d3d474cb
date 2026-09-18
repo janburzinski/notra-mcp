@@ -1,0 +1,47 @@
+src/utils/shared-tool-behavior.ts
+  s_49daa6511ef873::t_32bfa12dc29649 1-32
+src/notra-client.ts
+  s_49daa6511ef873::t_32bfa12dc29649 136,175,228
+src/types/json-schema.ts
+  s_49daa6511ef873::t_32bfa12dc29649 1-4
+src/types/request.ts
+  s_49daa6511ef873::t_32bfa12dc29649 12-15
+tests/tool-definitions.test.mjs
+  s_49daa6511ef873::t_32bfa12dc29649 4
+src/utils/json-schema-cache.ts
+  s_49daa6511ef873::t_32bfa12dc29649 2-3
+src/utils/deep-freeze.ts
+  s_49daa6511ef873::t_32bfa12dc29649 1-9
+src/server.ts
+  s_49daa6511ef873::t_32bfa12dc29649 2,27-28
+src/types/http.ts
+  s_49daa6511ef873::t_32bfa12dc29649 1-15
+src/http.ts
+  s_49daa6511ef873::t_32bfa12dc29649 17,26-27,395,400-406
+src/types/toolset.ts
+  s_49daa6511ef873::t_32bfa12dc29649 1
+src/utils/toolsets.ts
+  s_49daa6511ef873::t_32bfa12dc29649 1
+src/utils/request-signal.ts
+  s_49daa6511ef873::t_32bfa12dc29649 2,29-35
+tests/http-state.test.mjs
+  s_49daa6511ef873::t_72b55c5fec550c 254-256,320-340
+src/types/server.ts
+  s_49daa6511ef873::t_32bfa12dc29649 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7904482d72da7beef0d585ebcfa6598d3d474cb",
+  "prompts": {},
+  "sessions": {
+    "s_49daa6511ef873": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c0cd736-fed7-4afa-adb8-c93a3b828205",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    }
+  }
+}

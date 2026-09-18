@@ -1,0 +1,68 @@
+tests/tool-definitions.test.mjs
+  s_b3bd388f704260::t_bf4c3e3b8b6aa4 89-105,107-118
+src/types/server.ts
+  s_3dd20e90cc08aa::t_3bc2a97da8f717 6-11
+src/http.ts
+  s_fcdf3267c33855::t_9ef7bcfbd7e5c7 48-51
+  s_8abf298f301724::t_1e4aa58afb348c 38,42-47,52-55
+src/server.ts
+  s_1c7f829b9e1b2e::t_b0e35962d5ba09 28,33-95,108-116,118,121,123
+tests/http-e2e.test.mjs
+  s_1ad55c9baff225::t_312aec643c7ff5 148-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65f49877bacfdaf75ffa70de00c4222531d9bf62",
+  "prompts": {},
+  "sessions": {
+    "s_1ad55c9baff225": {
+      "agent_id": {
+        "tool": "amp",
+        "id": "TU-034QNGTn6Pb5C5Lx0RyaC7",
+        "model": "unknown"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    },
+    "s_1c7f829b9e1b2e": {
+      "agent_id": {
+        "tool": "amp",
+        "id": "TU-034QNCz66Rjkceb6leuUCw",
+        "model": "unknown"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    },
+    "s_3dd20e90cc08aa": {
+      "agent_id": {
+        "tool": "amp",
+        "id": "TU-034QNDdO7rN4V4FKDnw5KV",
+        "model": "unknown"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    },
+    "s_8abf298f301724": {
+      "agent_id": {
+        "tool": "amp",
+        "id": "TU-034QNDssCw07qu4MTKkcIG",
+        "model": "unknown"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    },
+    "s_b3bd388f704260": {
+      "agent_id": {
+        "tool": "amp",
+        "id": "TU-034QNFzeDPKqyqzXjbUbeV",
+        "model": "unknown"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    },
+    "s_fcdf3267c33855": {
+      "agent_id": {
+        "tool": "amp",
+        "id": "TU-034QNEgoB0oEe4bk5xJbsg",
+        "model": "unknown"
+      },
+      "human_author": "Jan Burzinski <156842394+janburzinski@users.noreply.github.com>"
+    }
+  }
+}
