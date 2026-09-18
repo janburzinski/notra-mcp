@@ -15,7 +15,7 @@ test("bearer parsing handles header arrays and rejects missing or split tokens",
 });
 
 test("scope claims merge and deduplicate without granting wildcard for explicit empty scopes", () => {
-  assert.deepEqual(extractScopes({}), ["*"]);
+  assert.deepEqual(extractScopes({}), []);
   assert.deepEqual(extractScopes({ scope: "posts.read posts.write", permissions: ["posts.read", "skills.read", 42] }), [
     "posts.read",
     "posts.write",
@@ -83,7 +83,14 @@ test("OAuth verifies signatures and claims; API keys remain delegated to the API
     clientId: "client-1",
   };
   const sign = (claims = {}, key = privateKey) =>
-    new SignJWT({ iss: issuer, sub: "user-1", org_id: "org-1", exp: Math.floor(Date.now() / 1000) + 300, ...claims })
+    new SignJWT({
+      iss: issuer,
+      aud: config.resource,
+      sub: "user-1",
+      org_id: "org-1",
+      exp: Math.floor(Date.now() / 1000) + 300,
+      ...claims,
+    })
       .setProtectedHeader({ alg: "RS256", kid: "test-key" })
       .sign(key);
   const token = await sign({ scope: "posts.read" });
@@ -98,11 +105,37 @@ test("OAuth verifies signatures and claims; API keys remain delegated to the API
     assert.equal((await authenticateBearerToken(await sign({ aud }), config)).kind, "oauth");
   for (const claims of [
     { aud: "wrong" },
+    { aud: undefined },
     { sub: undefined },
     { org_id: undefined },
     { org_id: "" },
     { org_id: 42 },
     { exp: 1 },
+  ]) {
+    await assert.rejects(authenticateBearerToken(await sign(claims), config), AuthError);
+  }
+  const organizationToken = await sign({ org_id: "workos-org", "urn:notra:access": "read" });
+  const organizationAuth = await authenticateBearerToken(organizationToken, config);
+  assert.equal(organizationAuth.organizationId, "workos-org");
+  assert.equal(organizationAuth.scopes.length, 17);
+  assert.ok(organizationAuth.scopes.includes("traffic.read"));
+  assert.ok(!organizationAuth.scopes.includes("posts.write"));
+
+  const consentToken = await sign({
+    org_id: undefined,
+    "urn:notra:workspace": "local-workspace",
+    "urn:notra:permission:posts": "read",
+    "urn:notra:permission:scans": "write",
+    scope: "openid offline_access",
+    permissions: ["*"],
+  });
+  const consentAuth = await authenticateBearerToken(consentToken, config);
+  assert.equal(consentAuth.organizationId, "local-workspace");
+  assert.deepEqual(consentAuth.scopes, ["posts.read", "scans.read", "scans.write"]);
+  for (const claims of [
+    { org_id: undefined, "urn:notra:permission:posts": "write" },
+    { "urn:notra:workspace": "", permissions: ["*"] },
+    { "urn:notra:workspace": "local-workspace", "urn:notra:permission:posts": "*" },
   ]) {
     await assert.rejects(authenticateBearerToken(await sign(claims), config), AuthError);
   }
@@ -117,4 +150,25 @@ test("OAuth verifies signatures and claims; API keys remain delegated to the API
   ]) {
     assert.deepEqual(await authenticateBearerToken(key, config), { kind: "apiKey", token: key });
   }
+});
+
+test("access levels expand scopes without broader claims overriding consent", () => {
+  for (const level of ["read", "write", "full"]) {
+    const scopes = extractScopes({
+      "urn:notra:workspace": "workspace-1",
+      "urn:notra:access": level,
+      "urn:notra:permission:posts": "write",
+      permissions: ["*"],
+    });
+    assert.equal(scopes.length, level === "full" ? 34 : 17);
+    assert.equal(scopes.includes("posts.read"), level !== "write");
+    assert.equal(scopes.includes("scans.write"), level !== "read");
+    assert.equal(scopes.includes("traffic.read"), level !== "write");
+    assert.ok(!scopes.includes("*"));
+  }
+  assert.throws(
+    () => extractScopes({ "urn:notra:workspace": "workspace-1", "urn:notra:access": "invalid" }),
+    AuthError,
+  );
+  assert.throws(() => extractScopes({ "urn:notra:access": "full" }), AuthError);
 });

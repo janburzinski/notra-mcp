@@ -14,20 +14,27 @@ export const NOTRA_API_AUDIENCE = "https://api.usenotra.com";
 export const OAUTH_AUTHORIZATION_SERVER_METADATA_PATH = "/.well-known/oauth-authorization-server";
 export const OAUTH_PROTECTED_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
 
-export const OAUTH_SCOPES = [
-  "offline_access",
-  "posts.read",
-  "posts.write",
-  "brand-identities.read",
-  "brand-identities.write",
-  "integrations.read",
-  "integrations.write",
-  "schedules.read",
-  "schedules.write",
-  "event-triggers.read",
-  "event-triggers.write",
-  "chats.read",
-  "chats.write",
-  "skills.read",
-  "skills.write",
+export const OAUTH_SCOPES = ["openid", "offline_access"] as const;
+export const OAUTH_WORKSPACE_CLAIM = "urn:notra:workspace";
+export const OAUTH_PERMISSION_CLAIM_PREFIX = "urn:notra:permission:";
+export const OAUTH_PERMISSION_RESOURCES = [
+  "posts",
+  "brand-identities",
+  "integrations",
+  "schedules",
+  "event-triggers",
+  "chats",
+  "skills",
+  "feedback",
+  "projects",
+  "geo-settings",
+  "prompts",
+  "competitors",
+  "scans",
+  "visibility",
+  "briefs",
+  "agent-readiness",
+  "traffic",
 ] as const;
+
+export const OAUTH_ACCESS_CLAIM = "urn:notra:access";

@@ -13,6 +13,7 @@ import {
   updateFeedbackSchema,
 } from "../schemas/feedback.js";
 import { handleError } from "../utils/mcp.js";
+import { apiOutputSchema } from "../utils/output-schema.js";
 
 /**
  * Registers the `submit_feedback` tool from `@usenotra/geo`. Mirrors the package's own
@@ -29,9 +30,9 @@ export function registerFeedbackTools(server: McpServer, options: FeedbackToolOp
       annotations: {
         title: "Submit feedback",
         readOnlyHint: false,
-        destructiveHint: false,
+        openWorldHint: false,
+        destructiveHint: true,
         idempotentHint: false,
-        openWorldHint: true,
       },
       inputSchema: shareJsonSchema(submitFeedbackSchema),
     },
@@ -47,8 +48,9 @@ export function registerFeedbackInboxTools(server: McpServer, client: NotraClien
     {
       description:
         "List feedback your organization received through its feedback URL, MCP servers or SDKs, filtered by triage status, kind or project",
-      annotations: { title: "List Feedback", readOnlyHint: true },
+      annotations: { title: "List Feedback", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: shareJsonSchema(listFeedbackSchema),
+      outputSchema: shareJsonSchema(apiOutputSchema("listFeedback")),
     },
     (params) => handleError(() => client.listFeedback(params)),
   );
@@ -57,8 +59,9 @@ export function registerFeedbackInboxTools(server: McpServer, client: NotraClien
     "get_feedback",
     {
       description: "Get a single feedback entry with its full message, agent metadata and context URL",
-      annotations: { title: "Get Feedback", readOnlyHint: true },
+      annotations: { title: "Get Feedback", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: shareJsonSchema(getFeedbackSchema),
+      outputSchema: shareJsonSchema(apiOutputSchema("getFeedback")),
     },
     ({ feedbackId }) => handleError(() => client.getFeedback(feedbackId)),
   );
@@ -67,8 +70,15 @@ export function registerFeedbackInboxTools(server: McpServer, client: NotraClien
     "update_feedback",
     {
       description: "Set the triage status of a feedback entry: new, triaged, resolved or archived",
-      annotations: { title: "Update Feedback", destructiveHint: false, idempotentHint: true },
+      annotations: {
+        title: "Update Feedback",
+        readOnlyHint: false,
+        openWorldHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+      },
       inputSchema: shareJsonSchema(updateFeedbackSchema),
+      outputSchema: shareJsonSchema(apiOutputSchema("updateFeedback")),
     },
     ({ feedbackId, status }) => handleError(() => client.updateFeedback(feedbackId, { status })),
   );

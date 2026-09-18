@@ -193,6 +193,20 @@ test("failed token verification invalidates the session", async () => {
   expect(retry.status).toHaveBeenCalledWith(401);
 });
 
+test("both protected resource discovery routes request only Connect-supported OAuth scopes", async () => {
+  const scopes = ["openid", "offline_access"];
+  for (const suffix of ["", "/mcp"]) {
+    const res = response();
+    await state.routes.get(`GET /.well-known/oauth-protected-resource${suffix}`)({}, res);
+    expect(res.json).toHaveBeenCalledWith({
+      resource: `https://mcp.example.test${suffix}`,
+      authorization_servers: ["https://auth.example.test"],
+      bearer_methods_supported: ["header"],
+      scopes_supported: scopes,
+    });
+  }
+});
+
 test("discovery caches successful metadata and refreshes it after five minutes", async () => {
   const first = { issuer: "https://auth.example.test", authorization_endpoint: "https://auth.example.test/authorize" };
   const next = { ...first, authorization_endpoint: "https://auth.example.test/authorize-v2" };

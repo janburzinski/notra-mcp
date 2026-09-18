@@ -39,6 +39,16 @@ beforeAll(async () => {
       if (!res.writableEnded) state.upstream.disconnects.push({ url: req.url, afterMs: Date.now() - started });
     });
     if (req.url === "/v1/chats") return; // Never answers; only a disconnect ends it.
+    // Tools now advertise output schemas from the OpenAPI spec, so the mock must
+    // answer the CSV import with a spec-conformant body or the SDK flags isError.
+    if (req.url.endsWith("/prompts/import")) {
+      res
+        .writeHead(200, { "content-type": "application/json" })
+        .end(
+          '{"imported":1,"updated":0,"skipped":0,"issues":[],"organization":{"id":"org-1","slug":"org","name":"Org","logo":null}}',
+        );
+      return;
+    }
     res.writeHead(200, { "content-type": "application/json" }).end('{"imported":1}');
   });
   upstream.listen(0, "127.0.0.1");

@@ -14,6 +14,7 @@ import {
   SESSION_TTL_MS,
 } from "./constants/http.js";
 import { OAUTH_AUTHORIZATION_SERVER_METADATA_PATH, OAUTH_PROTECTED_RESOURCE_METADATA_PATH } from "./constants/oauth.js";
+import { OPENAI_APPS_CHALLENGE_PATH, OPENAI_APPS_CHALLENGE_TOKEN } from "./constants/openai-apps.js";
 import { createServer } from "./server.js";
 import type { AuthContext } from "./types/auth.js";
 import type { BodyParserError, Session } from "./types/http.js";
@@ -333,6 +334,10 @@ app.get(OAUTH_PROTECTED_RESOURCE_METADATA_PATH, (_req, res) => {
 
 app.get("/.well-known/oauth-protected-resource/mcp", (_req, res) => {
   res.json(getProtectedResourceMetadata(oauthConfig, getMcpResourceUrl(oauthConfig)));
+});
+
+app.get(OPENAI_APPS_CHALLENGE_PATH, (_req, res) => {
+  res.type("text/plain").send(OPENAI_APPS_CHALLENGE_TOKEN);
 });
 
 app.post("/register", (_req, res) => {
