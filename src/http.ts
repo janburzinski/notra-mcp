@@ -9,6 +9,7 @@ import {
   DEFAULT_MAX_SESSIONS,
   DEFAULT_MAX_SESSIONS_PER_PRINCIPAL,
   MCP_JSON_BODY_LIMIT_BYTES,
+  MCP_PATHS,
   SESSION_RETRY_AFTER_SECONDS,
   SESSION_SWEEP_INTERVAL_MS,
   SESSION_TTL_MS,
@@ -22,7 +23,9 @@ import type { BodyParserError, Session } from "./types/http.js";
 import type { Toolset } from "./types/toolset.js";
 import { authenticateBearerToken, parseBearerToken } from "./utils/auth.js";
 import { readPositiveIntEnv } from "./utils/env.js";
+import { readOrganizationScope, selectRequestOrganization } from "./utils/organization.js";
 import { getMcpResourceUrl, getOAuthConfig, getProtectedResourceMetadata } from "./utils/oauth-config.js";
+import { oauthTokenMatchesScope } from "./utils/oauth-scope.js";
 import { runWithRequestSignal } from "./utils/request-signal.js";
 import { parseToolsets } from "./utils/toolsets.js";
 
@@ -55,6 +58,7 @@ const modernHandler = createMcpHandler(
       toolsets: authInfo.extra?.toolsets as ReadonlySet<Toolset>,
       onlyTool,
       trackUsage: true,
+      organizationScoped: authInfo.extra?.organizationScope !== undefined,
     });
   },
   {
@@ -71,7 +75,7 @@ function digestToken(token: string): Buffer {
   return createHmac("sha256", SESSION_TOKEN_DIGEST_KEY).update(token).digest();
 }
 
-async function getAuthenticatedSession(req: Request) {
+async function getAuthenticatedSession(req: Request, scope: string | undefined) {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   const token = parseBearerToken(req.headers["authorization"]);
 
@@ -86,6 +90,11 @@ async function getAuthenticatedSession(req: Request) {
 
   if (Date.now() - session.lastSeen > SESSION_TTL_MS) {
     closeSession(sessionId, session);
+    return undefined;
+  }
+
+  // A session belongs to the connection URL it was initialized on.
+  if (session.organizationScope !== scope) {
     return undefined;
   }
 
@@ -113,6 +122,15 @@ async function getAuthenticatedSession(req: Request) {
     }
   } else if (token && !timingSafeEqual(digestToken(token), session.tokenDigest)) {
     return undefined;
+  }
+
+  // An API-key session is pinned to the workspace selected at initialize; a
+  // request naming another workspace must open its own session.
+  if (session.auth.kind === "apiKey") {
+    const organizationId = selectRequestOrganization(scope, req.headers);
+    if (organizationId !== undefined && organizationId !== session.auth.organizationId) {
+      return undefined;
+    }
   }
 
   session.lastSeen = Date.now();
@@ -169,9 +187,14 @@ function evictForSessionQuota(principal: string) {
   }
 }
 
+// Workspace-scoped URLs announce the same registered resource as /mcp: AuthKit
+// rejects unregistered resource indicators (`invalid_target`), and MCP clients
+// accept a resource whose path is a prefix of the server URL. The workspace is
+// still enforced through the token's consent claim.
 function setBearerChallenge(res: Response, error?: string, description?: string) {
+  const resource = oauthConfig.resource;
   const metadataUrl = new URL(OAUTH_PROTECTED_RESOURCE_METADATA_PATH, oauthConfig.resource).toString();
-  const params = [`resource_metadata="${metadataUrl}"`, `resource="${oauthConfig.resource}"`];
+  const params = [`resource_metadata="${metadataUrl}"`, `resource="${resource}"`];
 
   if (error) {
     params.push(`error="${error}"`);
@@ -198,7 +221,11 @@ function sendUnauthorizedText(res: Response, description = "Unauthorized") {
   res.status(401).send("Unauthorized");
 }
 
-function toMcpAuthInfo(auth: AuthContext, toolsets: ReadonlySet<Toolset>): AuthInfo {
+function toMcpAuthInfo(
+  auth: AuthContext,
+  toolsets: ReadonlySet<Toolset>,
+  organizationScope: string | undefined,
+): AuthInfo {
   if (auth.kind === "oauth") {
     return {
       token: auth.token,
@@ -209,6 +236,7 @@ function toMcpAuthInfo(auth: AuthContext, toolsets: ReadonlySet<Toolset>): AuthI
         kind: auth.kind,
         userId: auth.userId,
         organizationId: auth.organizationId,
+        organizationScope,
         toolsets,
       },
     };
@@ -219,7 +247,7 @@ function toMcpAuthInfo(auth: AuthContext, toolsets: ReadonlySet<Toolset>): AuthI
     clientId: "notra-api-key",
     scopes: ["*"],
     resource: new URL(oauthConfig.resource),
-    extra: { kind: auth.kind, toolsets },
+    extra: { kind: auth.kind, organizationId: auth.organizationId, organizationScope, toolsets },
   };
 }
 
@@ -234,7 +262,11 @@ function fromMcpAuthInfo(authInfo: AuthInfo): AuthContext {
       scopes: authInfo.scopes,
     };
   }
-  return { kind: "apiKey", token: authInfo.token };
+  return {
+    kind: "apiKey",
+    token: authInfo.token,
+    organizationId: typeof extra.organizationId === "string" ? extra.organizationId : undefined,
+  };
 }
 
 /** Reads `?toolsets=content,geo` (or repeated keys), falling back to `NOTRA_MCP_TOOLSETS`. */
@@ -255,24 +287,80 @@ function requestToolsets(req: Request, res: Response): ReadonlySet<Toolset> | un
   }
 }
 
-async function authenticateRequest(req: Request, res: Response): Promise<AuthContext | undefined> {
+function sendJsonRpcError(res: Response, status: number, code: number, message: string) {
+  res.status(status).json({ jsonrpc: "2.0", error: { code, message }, id: null });
+}
+
+/**
+ * Reads the `/mcp/{organization}` segment. Answers malformed segments itself
+ * and returns null, so callers only see a valid scope or undefined.
+ */
+function requestScope(req: Request, res: Response): string | undefined | null {
+  const scope = readOrganizationScope(req.params);
+  if (scope === null) {
+    sendJsonRpcError(res, 404, -32000, "Unknown workspace in the connection URL");
+  }
+  return scope;
+}
+
+async function authenticateRequest(
+  req: Request,
+  res: Response,
+  scope: string | undefined,
+): Promise<AuthContext | undefined> {
   const token = parseBearerToken(req.headers["authorization"]);
   if (!token) {
     sendUnauthorizedJson(res, "Missing bearer token");
     return undefined;
   }
 
+  let auth: AuthContext;
   try {
-    return await authenticateBearerToken(token, oauthConfig);
+    auth = await authenticateBearerToken(token, oauthConfig);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid bearer token";
     sendUnauthorizedJson(res, message);
     return undefined;
   }
+
+  // Account API keys pick their workspace per request, from the scoped URL or
+  // else the header. OAuth tokens are bound to their consent workspace, so
+  // nothing is forwarded for them; a scoped URL naming another workspace is
+  // refused rather than silently acting on the token's workspace.
+  if (auth.kind === "apiKey") {
+    const organizationId = selectRequestOrganization(scope, req.headers);
+    return organizationId ? { ...auth, organizationId } : auth;
+  }
+  if (scope !== undefined) {
+    let matches: boolean;
+    try {
+      matches = await oauthTokenMatchesScope(auth, scope);
+    } catch (error) {
+      console.error("Error resolving the connection URL workspace:", error);
+      sendJsonRpcError(res, 502, -32000, "Could not verify the workspace in the connection URL, try again later");
+      return undefined;
+    }
+    if (!matches) {
+      sendJsonRpcError(
+        res,
+        403,
+        -32000,
+        `This connection URL is scoped to workspace "${scope}", but the OAuth authorization is for a different workspace. Reconnect and choose "${scope}" when authorizing, or use ${getMcpResourceUrl(oauthConfig)}.`,
+      );
+      return undefined;
+    }
+  }
+  return auth;
 }
 
-async function handleModernRequest(req: Request, res: Response, auth: AuthContext, toolsets: ReadonlySet<Toolset>) {
-  const authInfo = toMcpAuthInfo(auth, toolsets);
+async function handleModernRequest(
+  req: Request,
+  res: Response,
+  auth: AuthContext,
+  toolsets: ReadonlySet<Toolset>,
+  scope: string | undefined,
+) {
+  const authInfo = toMcpAuthInfo(auth, toolsets, scope);
   const nodeHandler = toNodeHandler({
     fetch: (request, options) => modernHandler.fetch(request, { ...options, authInfo }),
   });
@@ -338,6 +426,13 @@ app.get("/.well-known/oauth-protected-resource/mcp", (_req, res) => {
   res.json(getProtectedResourceMetadata(oauthConfig, getMcpResourceUrl(oauthConfig)));
 });
 
+app.get("/.well-known/oauth-protected-resource/mcp/:organization", (req, res) => {
+  const scope = requestScope(req, res);
+  if (scope) {
+    res.json(getProtectedResourceMetadata(oauthConfig));
+  }
+});
+
 app.get(OPENAI_APPS_CHALLENGE_PATH, (_req, res) => {
   res.type("text/plain").send(OPENAI_APPS_CHALLENGE_TOKEN);
 });
@@ -354,7 +449,7 @@ app.post("/register", (_req, res) => {
   res.status(404).end();
 });
 
-app.post("/mcp", (req, res) => {
+app.post(MCP_PATHS, (req, res) => {
   // A client that goes away before the response completes (tab closed, fetch
   // aborted, connection dropped) must cancel the in-flight tool work upstream.
   // The signal rides AsyncLocalStorage so tool handlers and the Notra API
@@ -367,6 +462,10 @@ app.post("/mcp", (req, res) => {
 });
 
 async function handleMcpPost(req: Request, res: Response) {
+  const scope = requestScope(req, res);
+  if (scope === null) {
+    return;
+  }
   try {
     const webRequest = await toWebRequest(req, req.body);
     if (!(await isLegacyRequest(webRequest, req.body))) {
@@ -374,9 +473,9 @@ async function handleMcpPost(req: Request, res: Response) {
       if (!toolsets) {
         return;
       }
-      const auth = await authenticateRequest(req, res);
+      const auth = await authenticateRequest(req, res, scope);
       if (auth) {
-        await handleModernRequest(req, res, auth, toolsets);
+        await handleModernRequest(req, res, auth, toolsets, scope);
       }
       return;
     }
@@ -385,7 +484,7 @@ async function handleMcpPost(req: Request, res: Response) {
     let transport: NodeStreamableHTTPServerTransport;
 
     if (sessionId) {
-      const session = await getAuthenticatedSession(req);
+      const session = await getAuthenticatedSession(req, scope);
       if (!session) {
         sendUnauthorizedJson(res);
         return;
@@ -396,7 +495,7 @@ async function handleMcpPost(req: Request, res: Response) {
       if (!toolsets) {
         return;
       }
-      const auth = await authenticateRequest(req, res);
+      const auth = await authenticateRequest(req, res, scope);
       if (!auth) {
         return;
       }
@@ -412,12 +511,19 @@ async function handleMcpPost(req: Request, res: Response) {
         });
         return;
       }
-      const server = createServer(auth, { toolsets, trackUsage: true });
+      const server = createServer(auth, { toolsets, trackUsage: true, organizationScoped: scope !== undefined });
 
       transport = new NodeStreamableHTTPServerTransport({
         sessionIdGenerator: randomUUID,
         onsessioninitialized: (id: string) => {
-          const session = { transport, tokenDigest, auth, principal, lastSeen: Date.now() };
+          const session = {
+            transport,
+            tokenDigest,
+            auth,
+            principal,
+            organizationScope: scope,
+            lastSeen: Date.now(),
+          };
           // A concurrent burst can fill the server between admission and
           // now. Close the fresh transport instead of exceeding the cap; the
           // client's re-initialize then gets a clean 503 at admission.
@@ -462,8 +568,12 @@ async function handleMcpPost(req: Request, res: Response) {
   }
 }
 
-app.get("/mcp", async (req, res) => {
-  const session = await getAuthenticatedSession(req);
+app.get(MCP_PATHS, async (req, res) => {
+  const scope = requestScope(req, res);
+  if (scope === null) {
+    return;
+  }
+  const session = await getAuthenticatedSession(req, scope);
   if (!session) {
     sendUnauthorizedText(res);
     return;
@@ -471,8 +581,12 @@ app.get("/mcp", async (req, res) => {
   await session.transport.handleRequest(req, res);
 });
 
-app.delete("/mcp", async (req, res) => {
-  const session = await getAuthenticatedSession(req);
+app.delete(MCP_PATHS, async (req, res) => {
+  const scope = requestScope(req, res);
+  if (scope === null) {
+    return;
+  }
+  const session = await getAuthenticatedSession(req, scope);
   if (!session) {
     sendUnauthorizedText(res);
     return;

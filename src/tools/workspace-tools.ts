@@ -48,7 +48,7 @@ export async function getWhoAmI(client: NotraClient): Promise<WhoAmIResponse> {
   };
 }
 
-export function registerWorkspaceTools(server: McpServer, client: NotraClient) {
+export function registerWhoAmITool(server: McpServer, client: NotraClient) {
   server.registerTool(
     "whoami",
     {
@@ -62,18 +62,33 @@ export function registerWorkspaceTools(server: McpServer, client: NotraClient) {
       return handleError(() => getWhoAmI(client));
     },
   );
+}
 
+/** Workspace discovery; omitted on workspace-scoped connection URLs (`/mcp/{organization}`). */
+export function registerListWorkspacesTool(server: McpServer, client: NotraClient) {
   server.registerTool(
     "list_workspaces",
     {
       description:
-        "List accepted and pending Notra workspaces available to the authenticated account. Organization API keys only return their current workspace.",
+        "List accepted and pending Notra workspaces available to the authenticated account. Organization API keys only return their current workspace. Account API keys return every workspace their user belongs to; the user picks the one other tools act on with NOTRA_ORGANIZATION_ID (stdio), or the /mcp/<workspace> URL or X-Notra-Organization-Id header (HTTP).",
       annotations: { title: "List Workspaces", readOnlyHint: true, openWorldHint: false, destructiveHint: false },
       inputSchema: shareJsonSchema(listWorkspacesInputSchema),
       outputSchema: shareJsonSchema(listWorkspacesOutputSchema),
     },
     async () => {
-      return handleError(async () => projectWorkspaceContext(await client.getWorkspaceContext(true)));
+      return handleError(async () => {
+        try {
+          return projectWorkspaceContext(await client.getWorkspaceContext(true));
+        } catch (error) {
+          // A stale workspace selection (e.g. NOTRA_ORGANIZATION_ID read at stdio startup) must not block the
+          // listing users need to pick a valid one; the endpoint works without the header.
+          try {
+            return projectWorkspaceContext(await client.getWorkspaceContext(true, true));
+          } catch {
+            throw error;
+          }
+        }
+      });
     },
   );
 }
