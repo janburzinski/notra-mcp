@@ -24,6 +24,25 @@ test("every exposed tool explicitly declares all three submission permission hin
   }
 });
 
+test("automation tools disclose and annotate automatic publication", async () => {
+  const registrations = vi.spyOn(McpServer.prototype, "registerTool");
+  let server;
+  try {
+    server = createServer("test-key");
+    const tools = new Map(registrations.mock.calls.map(([name, tool]) => [name, tool]));
+    for (const name of ["create_schedule", "update_schedule", "create_event_trigger", "update_event_trigger"]) {
+      const tool = tools.get(name);
+      assert.equal(tool.annotations.readOnlyHint, false, name);
+      assert.equal(tool.annotations.openWorldHint, true, name);
+      assert.equal(tool.annotations.destructiveHint, true, name);
+      assert.match(tool.description, /autoPublish.*automatically published.*outputConfig.publishDestination/, name);
+    }
+  } finally {
+    registrations.mockRestore();
+    await server?.close();
+  }
+});
+
 test("object API responses include both MCP text and structured content", async () => {
   const data = { posts: [{ id: "post-1" }] };
   assert.deepEqual(await handleError(async () => data), {
@@ -79,5 +98,26 @@ test("fetch failures expose connection details without stacks or raw error objec
       isError: true,
       content: [{ type: "text", text: `fetch failed: ${detail}` }],
     });
+  }
+});
+
+test("restricted operations stay absent even when requested through onlyTool", async () => {
+  for (const name of [
+    "list_chats",
+    "get_chat",
+    "get_chat_by_external_channel",
+    "list_agent_chats",
+    "create_chat",
+    "post_chat_message",
+    "respond_to_chat_approvals",
+    "create_webhook_endpoint",
+    "issue_geo_ingest_token",
+    "rotate_geo_ingest_token",
+  ]) {
+    for (const toolsets of [new Set(["content", "geo"]), new Set(["content"]), new Set(["geo"])]) {
+      const server = createServer("test-key", { onlyTool: name, toolsets });
+      assert.equal(server.toolInputSchemaJson(name), undefined, name);
+      await server.close();
+    }
   }
 });
